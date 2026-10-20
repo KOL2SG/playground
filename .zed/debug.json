@@ -1,0 +1,38 @@
+[
+  {
+    "label": "Debug active Go file",
+    "build": {
+      "command": "go build",
+      "args": ["$ZED_FILE"],
+      "cwd": "$ZED_WORKTREE_ROOT/GO"
+    },
+    "program": "$ZED_WORKTREE_ROOT/GO/GO",
+    "cwd": "$ZED_WORKTREE_ROOT/GO",
+    "request": "launch",
+    "adapter": "go-debugger"
+  },
+  {
+    "label": "Debug active C++ file (CodeLLDB)",
+    "build": {
+      "command": "/usr/bin/clang",
+      "args": [
+        "-g",
+        "$ZED_FILE",
+        "-fdiagnostics-color=always",
+        "-stdlib=libc++",
+        "-std=c++23",
+        // "-fsanitize=address,undefined",
+        "-o",
+        "$ZED_WORKTREE_ROOT/$ZED_STEM",
+        "-lstdc++",
+        "-lm"
+      ],
+      "cwd": "$ZED_WORKTREE_ROOT",
+    },
+    "program": "$ZED_WORKTREE_ROOT/$ZED_STEM",
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "request": "launch",
+    "adapter": "CodeLLDB",
+    // "stopOnEntry": true,
+  },
+]
