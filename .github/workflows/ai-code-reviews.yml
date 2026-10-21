@@ -1,0 +1,27 @@
+name: AI Code Review (Self-Hosted Ollama)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  review:
+    runs-on: [self-hosted, gpu-network]  # label your self-hosted runner accordingly
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate diff against base branch
+        run: |
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          git diff origin/${{ github.event.pull_request.base.ref }}...HEAD > pr.diff
+
+      - name: Run Ollama-backed review
+        env:
+          OLLAMA_URL: http://10.20.0.15:11434/api/generate
+          OLLAMA_MODEL: qwen2.5-coder:14b
+          GITHUB_TOKEN: ${{ secrets.REVIEW_BOT_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: python3 scripts/ai_review.py

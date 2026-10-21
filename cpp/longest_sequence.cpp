@@ -45,10 +45,9 @@ public:
             if (nums.size()==0)
                 return 0;
             unsigned int size = nums.size();
-            std::array<bool, size> placement{false};
+            std::vector<int> place(size,0);
             unsigned int count = 1, max_count = 1;
 
-            for(int i=0; )
 
             return max_count;
         }
@@ -68,7 +67,7 @@ int main() {
     std::cout << "Algorithm took: " << duration_us.count() << " us" << std::endl;
 
     auto start1 = std::chrono::high_resolution_clock::now();
-    std::cout << s.longestConsecutive(nums4) << std::endl;
+    std::cout << s.longestConsecutive2(nums4) << std::endl;
     auto end1 = std::chrono::high_resolution_clock::now();
     auto duration_us1 = std::chrono::duration_cast<std::chrono::nanoseconds>(end1 - start1);
     std::cout << "Algorithm took: " << duration_us.count() << " us" << std::endl;
