@@ -6,7 +6,7 @@ on:
 
 jobs:
   review:
-    runs-on: [self-hosted, gpu-network]  # label your self-hosted runner accordingly
+    runs-on: [self-hosted, Linux, X64]  # label your self-hosted runner accordingly
     steps:
       - name: Checkout PR
         uses: actions/checkout@v4
