@@ -24,7 +24,7 @@ def get_diff():
 def call_ollama(diff_text):
     payload = json.dumps({
         "model": MODEL,
-        "prompt": REVIEW_PROMPT.format(diff=diff_text[:12000]),  # keep under context window
+        "prompt": REVIEW_PROMPT.format(diff=diff_text),  # keep under context window
         "stream": False,
     }).encode("utf-8")
     req = urllib.request.Request(OLLAMA_URL, data=payload, headers={"Content-Type": "application/json"})
