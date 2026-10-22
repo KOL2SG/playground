@@ -3,7 +3,7 @@ import os
 import urllib.request
 
 OLLAMA_URL = os.environ["OLLAMA_URL"]  # e.g. http://10.20.0.15:11434/api/generate
-MODEL = os.environ.get("OLLAMA_MODEL", "qwen3-coder:30b")
+MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5-coder:14b")
 GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
 REPO = os.environ["GITHUB_REPOSITORY"]
 PR_NUMBER = os.environ["PR_NUMBER"]
