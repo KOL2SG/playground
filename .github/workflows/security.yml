@@ -3,6 +3,7 @@ on:
   push:
     branches: [main, test]
   pull_request:
+     types: [opened, synchronize, reopened]
 permissions:
   actions: read
   contents: read
@@ -15,8 +16,13 @@ jobs:
     runs-on: [self-hosted, Linux, X64, qwen3-coder]
     steps:
       - uses: actions/checkout@v6
+        # with:
+        #   fetch-depth: 0          # diff mode needs the PR's base commit
+      - name: Run Draugr
+        uses: draugr-dev/draugr@v0
         with:
-          fetch-depth: 0          # diff mode needs the PR's base commit
+          saga: draugr.saga.yaml
+          tools: true
 
       # - run: draugr scan draugr.saga.yaml # Runs on local self-hosted runner
       #   continue-on-error: true  # <--- Forces the workflow to keep going
@@ -25,14 +31,14 @@ jobs:
       #   with:
       #     sarif_file: draugr-out/results.sarif # Path to the generated SARIF file
       #
-      - uses: draugr-dev/draugr@v0   # latest v0.x; pin @vX.Y.Z for reproducible CI (installs Draugr for you)
-        with:
-          saga: draugr.saga.yaml
-          tools: true             # provision the scanners the controls need
-          fail-on: P1           # (scan/push) gate the build; the default
-          # fail-on-new: P1       # (diff/PR)   gate only on findings this PR introduces
-          # diff-view: actions    # (diff/PR)   the comment lists what to do, not every finding
-          feeds: true          # draugr feeds update, before the scan
+      # - uses: draugr-dev/draugr@v0   # latest v0.x; pin @vX.Y.Z for reproducible CI (installs Draugr for you)
+      #   with:
+      #     saga: draugr.saga.yaml
+      #     tools: true             # provision the scanners the controls need
+      #     fail-on: P1           # (scan/push) gate the build; the default
+      #     # fail-on-new: P1       # (diff/PR)   gate only on findings this PR introduces
+      #     # diff-view: actions    # (diff/PR)   the comment lists what to do, not every finding
+      #     feeds: true          # draugr feeds update, before the scan
 
 #       - name: Run test script
 #         id: run_step # Must match the reference name!
