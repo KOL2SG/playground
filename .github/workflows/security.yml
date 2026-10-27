@@ -18,17 +18,58 @@ jobs:
         with:
           fetch-depth: 0          # diff mode needs the PR's base commit
 
-      # - run: draugr scan draugr.saga.yaml
+      # - run: draugr scan draugr.saga.yaml # Runs on local self-hosted runner
       #   continue-on-error: true  # <--- Forces the workflow to keep going
 
       # - uses: github/codeql-action/upload-sarif@v4
       #   with:
       #     sarif_file: draugr-out/results.sarif # Path to the generated SARIF file
       #
-      - uses: draugr-dev/draugr@v0   # latest v0.x; pin @vX.Y.Z for reproducible CI (installs Draugr for you)
+      # - uses: draugr-dev/draugr@v0   # latest v0.x; pin @vX.Y.Z for reproducible CI (installs Draugr for you)
+      #   with:
+      #     saga: draugr.saga.yaml
+      #     tools: true             # provision the scanners the controls need
+      #     # fail-on: P1           # (scan/push) gate the build; the default
+      #     # fail-on-new: P1       # (diff/PR)   gate only on findings this PR introduces
+      #     # diff-view: actions    # (diff/PR)   the comment lists what to do, not every finding
+
+      - name: Run test script
+        # id: run_step # Must match the reference name!
+        run: |
+          # Generate a random unique delimiter to prevent collisions in logs
+          EOF=$(dd if=/dev/urandom bs=15 count=1 2>/dev/null | base64 | tr -dc 'a-zA-Z0-9')
+
+          # 1. Declare the key using the delimiter
+          echo "TEST_RESULT<<$EOF" >> "$GITHUB_OUTPUT"
+
+          # 2. Append your multiline script output
+          # Example: capturing the actual output of a npm test run
+          draugr scan draugr.saga.yaml >> "$GITHUB_OUTPUT" 2>&1 || true
+
+          # 3. Close the delimiter
+          echo "$EOF" >> "$GITHUB_OUTPUT"
+
+      # Verify the multi-line output in a subsequent step
+      - name: Use the output
+        env:
+          # Mapping it to an env variable is safer for multi-line inputs in bash
+          THE_OUTPUT: ${{ steps.run_step.outputs.TEST_RESULT }}
+        run: |
+          echo "Captured multi-line logs:"
+          echo "$THE_OUTPUT"
+
+      - name: Post to Issue via GitHub Script
+        uses: actions/github-script@v9
+        env:
+          RUN_OUTPUT: ${{ steps.run_step.outputs.TEST_RESULT }}
         with:
-          saga: draugr.saga.yaml
-          tools: true             # provision the scanners the controls need
-          # fail-on: P1           # (scan/push) gate the build; the default
-          # fail-on-new: P1       # (diff/PR)   gate only on findings this PR introduces
-          # diff-view: actions    # (diff/PR)   the comment lists what to do, not every finding
+          script: |
+            const output = process.env.RUN_OUTPUT;
+
+            // Create a new issue
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: "Automated Report from Action Run",
+              body: `### Action Run Output \n\n ${output}`
+            });
