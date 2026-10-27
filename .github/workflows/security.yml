@@ -44,73 +44,118 @@ jobs:
 #               ${process.env.FINDINGS_SUMMARY}`
 #             })
 
-      # 2. Parse the Draugr SARIF output file using a Python extractor
-      - name: Parse Draugr SARIF Findings
-        id: parse_sarif
+      # 2. Inject report.json properties into the SARIF runs schema
+      - name: Merge report.json into SARIF Report
+        id: merge_reports
         shell: python
         run: |
           import json
           import os
 
-          # Dynamically fetch the SARIF output path exposed by the Draugr Action step
-          sarif_path = "draugr-out/"
+          # Dynamic extraction of Draugr workspace outputs
+          sarif_path = "${{ steps.draugr.outputs.sarif }}"
 
-          # Fallback check in case the file location is empty or missing
+          # Default fallback paths if the environment parameters aren't bound
           if not sarif_path or not os.path.exists(sarif_path):
-              print(f"SARIF file not found at: {sarif_path}")
-              with open(os.environ['GITHUB_OUTPUT'], 'a') as env:
-                  env.write("has_findings=false\n")
+              sarif_path = "draugr-out/results.sarif"
+
+          json_report_path = "draugr-out/report.json" # Change this path if outputted elsewhere
+
+          # Gracefully exit if reports weren't produced due to scanner failure
+          if not os.path.exists(sarif_path):
+              print("Skipping merge: Base SARIF file not found.")
               exit(0)
 
-          with open(sarif_path, "r") as f:
-              data = json.load(f)
+          # Open base reports
+          with open(sarif_path, 'r') as f:
+              sarif_data = json.load(f)
+
+          # Inject priority ratings if report.json is present
+          if os.path.exists(json_report_path):
+              with open(json_report_path, 'r') as f:
+                  json_data = json.load(f)
+
+              # Pull the findings array mapping from the standard report.json layout
+              custom_findings = json_data.get("findings", [])
+
+              # Map priority rankings onto rules metadata inside the SARIF structure
+              for run in sarif_data.get("runs", []):
+                  # Ensure the run properties bucket exists
+                  if "properties" not in run:
+                      run["properties"] = {}
+
+                  # Inject summary statistics from report.json straight into the tool properties block
+                  run["properties"]["draugrSummary"] = {
+                      "score": json_data.get("score"),
+                      "verdict": json_data.get("verdict"),
+                      "totalVulnerabilities": len(custom_findings)
+                  }
+
+                  # Map specific rule priority keys matching ruleIds
+                  for result in run.get("results", []):
+                      rule_id = result.get("ruleId")
+                      # Cross reference against custom findings inside report.json
+                      for matching_item in custom_findings:
+                          if matching_item.get("id") == rule_id or matching_item.get("ruleId") == rule_id:
+                              if "properties" not in result:
+                                  result["properties"] = {}
+                              # Inject Draugr contextual priority weights
+                              result["properties"]["draugrPriority"] = matching_item.get("priority", "UNKNOWN")
+                              result["properties"]["exposure"] = matching_item.get("exposure", "UNKNOWN")
+
+          # Write out the new consolidated report format
+          with open("combined_report.sarif", "w") as f:
+              json.dump(sarif_data, f, indent=2)
+          print("Successfully generated combined_report.sarif")
+
+      # 3. Parse out the newly augmented JSON mapping fields into GitHub Issues
+      - name: Report Combined Findings to Issues
+        shell: python
+        run: |
+          import json
+          import os
+
+          if not os.path.exists("combined_report.sarif"):
+              exit(0)
+
+          with open("combined_report.sarif", "r") as f:
+              sarif = json.load(f)
 
           findings = []
-          # Map structural SARIF arrays compiled by Draugr
-          for run in data.get("runs", []):
-              tool_driver = run.get("tool", {}).get("driver", {})
-              tool_name = tool_driver.get("name", "Draugr Engine")
+          for run in sarif.get("runs", []):
+              # Check for the custom summary metrics injected by step 2
+              summary = run.get("properties", {}).get("draugrSummary", {})
+              verdict = summary.get("verdict", "UNKNOWN")
 
               for result in run.get("results", []):
-                  rule_id = result.get("ruleId", "UnknownRule")
-                  msg = result.get("message", {}).get("text", "No details provided.")
-                  level = result.get("level", "warning").upper()
+                  rule_id = result.get("ruleId", "Rule")
+                  msg = result.get("message", {}).get("text", "")
 
-                  # Extract the precise code location mapping
-                  loc = "Global Scope / Unknown Line"
-                  if result.get("locations"):
-                      phys = result["locations"][0].get("physicalLocation", {})
-                      uri = phys.get("artifactLocation", {}).get("uri", "unknown_file")
-                      line = phys.get("region", {}).get("startLine", "?")
-                      loc = f"`{uri}` at line `{line}`"
+                  # Fetch our custom priority keys
+                  props = result.get("properties", {})
+                  priority = props.get("draugrPriority", "NOT_SET")
+                  exposure = props.get("exposure", "NOT_SET")
 
-                  # Build a clean Markdown block for the issue text body
-                  findings.append(f"### 🛑 [{level}] Rule: {rule_id}\n- **Sub-Scanner Engine:** {tool_name}\n- **Location:** {loc}\n- **Vulnerability Details:** {msg}\n\n---")
+                  findings.append(f"### 🛑 Rule: {rule_id} (Priority: **{priority}**)\n- **Exposure Context:** {exposure}\n- **Details:** {msg}\n\n---")
 
-          # Compile the runtime parameters and flags
           if findings:
-              issue_body = "## ⚠️ Draugr Security Scan Report\nThe automated scan completed with outstanding code vulnerabilities:\n\n" + "\n".join(findings)
-              has_findings = "true"
-          else:
-              issue_body = "🎉 Great news! The Draugr security gate completed with zero vulnerabilities found."
-              has_findings = "false"
+              issue_body = f"## ⚠️ Combined Draugr Security Scan Report\n" + "\n".join(findings)
 
-          # Export tracking parameters to GitHub multi-line ecosystem variables safely
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as env:
-              env.write(f"has_findings={has_findings}\n")
+              # Set the Environment block for the CLI tool safely
+              with open(os.environ['GITHUB_ENV'], 'a') as env:
+                  env.write("HAS_FINDINGS=true\n")
+                  env.write("COMBINED_BODY<<EOF\n")
+                  env.write(issue_body + "\n")
+                  env.write("EOF\n")
 
-          with open(os.environ['GITHUB_ENV'], 'a') as env:
-              env.write("DRAUGR_ISSUE_BODY<<EOF\n")
-              env.write(issue_body + "\n")
-              env.write("EOF\n")
-
-      # 3. Create the issue via GitHub CLI with auto-generated security label handling
-      - name: Create GitHub Issue with Findings
-        if: steps.parse_sarif.outputs.has_findings == 'true'
+      # 4. Open the issue utilizing the newly compiled datasets
+      - name: Create Combined GitHub Issue
+        if: env.HAS_FINDINGS == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Automatically generate the security label tag if it does not exist in the repo
-          gh label create security --color "d93f0b" --description "Vulnerabilities detected by Draugr security scanner" || true
-
-          # Post the issue thread using the environment strings
+          gh label create security --color "d93f0b" --description "Draugr scan vulnerabilities" || true
+          gh issue create \
+            --title "⚠️ Merged Draugr Security Artifact Report" \
+            --body "$COMBINED_BODY" \
+            --label "bug,security"
