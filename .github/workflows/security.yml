@@ -1,7 +1,7 @@
 name: Security
 on:
   push:
-    branches: [main]
+    branches: [main, test]
   pull_request:
 permissions:
   actions: read
