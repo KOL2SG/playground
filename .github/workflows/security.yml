@@ -44,64 +44,73 @@ jobs:
 #               ${process.env.FINDINGS_SUMMARY}`
 #             })
 
-      # 2. Extract findings using Python and compile a Markdown body string
-      - name: Parse SARIF findings
+      # 2. Parse the Draugr SARIF output file using a Python extractor
+      - name: Parse Draugr SARIF Findings
         id: parse_sarif
         shell: python
         run: |
           import json
           import os
 
-          # Read the SARIF report file
-          with open("draugr-out/results.sarif", "r") as f:
+          # Dynamically fetch the SARIF output path exposed by the Draugr Action step
+          sarif_path = "draugr-out/"
+
+          # Fallback check in case the file location is empty or missing
+          if not sarif_path or not os.path.exists(sarif_path):
+              print(f"SARIF file not found at: {sarif_path}")
+              with open(os.environ['GITHUB_OUTPUT'], 'a') as env:
+                  env.write("has_findings=false\n")
+              exit(0)
+
+          with open(sarif_path, "r") as f:
               data = json.load(f)
 
           findings = []
-          # Safely traverse the SARIF structural arrays
+          # Map structural SARIF arrays compiled by Draugr
           for run in data.get("runs", []):
-              tool_name = run.get("tool", {}).get("driver", {}).get("name", "Scanner")
+              tool_driver = run.get("tool", {}).get("driver", {})
+              tool_name = tool_driver.get("name", "Draugr Engine")
+
               for result in run.get("results", []):
                   rule_id = result.get("ruleId", "UnknownRule")
                   msg = result.get("message", {}).get("text", "No details provided.")
                   level = result.get("level", "warning").upper()
 
-                  # Get location details if available
-                  loc = "Unknown line"
+                  # Extract the precise code location mapping
+                  loc = "Global Scope / Unknown Line"
                   if result.get("locations"):
                       phys = result["locations"][0].get("physicalLocation", {})
                       uri = phys.get("artifactLocation", {}).get("uri", "unknown_file")
                       line = phys.get("region", {}).get("startLine", "?")
                       loc = f"`{uri}` at line `{line}`"
 
-                  findings.append(f"### 🛑 [{level}] Rule: {rule_id}\n- **Tool:** {tool_name}\n- **Location:** {loc}\n- **Description:** {msg}\n\n---")
+                  # Build a clean Markdown block for the issue text body
+                  findings.append(f"### 🛑 [{level}] Rule: {rule_id}\n- **Sub-Scanner Engine:** {tool_name}\n- **Location:** {loc}\n- **Vulnerability Details:** {msg}\n\n---")
 
-          # Compile the output or write a graceful message if no bugs are found
+          # Compile the runtime parameters and flags
           if findings:
-              issue_body = "The automated tool execution discovered the following issues:\n\n" + "\n".join(findings)
+              issue_body = "## ⚠️ Draugr Security Scan Report\nThe automated scan completed with outstanding code vulnerabilities:\n\n" + "\n".join(findings)
               has_findings = "true"
           else:
-              issue_body = "🎉 Great news! The automated scan completed and found zero vulnerabilities."
+              issue_body = "🎉 Great news! The Draugr security gate completed with zero vulnerabilities found."
               has_findings = "false"
 
-          # Write out to GitHub Environment files safely bypassing multi-line variable blocks
+          # Export tracking parameters to GitHub multi-line ecosystem variables safely
           with open(os.environ['GITHUB_OUTPUT'], 'a') as env:
               env.write(f"has_findings={has_findings}\n")
 
-          # Write multi-line block safely to GITHUB_ENV
           with open(os.environ['GITHUB_ENV'], 'a') as env:
-              env.write("ISSUE_BODY<<EOF\n")
+              env.write("DRAUGR_ISSUE_BODY<<EOF\n")
               env.write(issue_body + "\n")
               env.write("EOF\n")
 
-      # 3. Create a GitHub Issue using the parsed results via GitHub CLI
+      # 3. Create the issue via GitHub CLI with auto-generated security label handling
       - name: Create GitHub Issue with Findings
         if: steps.parse_sarif.outputs.has_findings == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh label create security --color "d93f0b" --description "Vulnerabilities detected by automated scans" || true
+          # Automatically generate the security label tag if it does not exist in the repo
+          gh label create security --color "d93f0b" --description "Vulnerabilities detected by Draugr security scanner" || true
 
-          gh issue create \
-            --title "⚠️ Automated Scan Security Findings Detected" \
-            --body "$ISSUE_BODY" \
-            --label "bug,security"
+          # Post the issue thread using the environment strings
