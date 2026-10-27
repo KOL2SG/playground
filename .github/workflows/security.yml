@@ -13,10 +13,26 @@ jobs:
   draugr:
     runs-on: [self-hosted, Linux, X64, qwen3-coder]
     steps:
+      - name: Post to Issue via GitHub Script
+        uses: actions/github-script@v9
+        env:
+          RUN_OUTPUT: ${{ steps.run_step.outputs.TEST_RESULT }}
+        with:
+          script: |
+            const output = process.env.RUN_OUTPUT;
+
+            // Create a new issue
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: "Automated Report from Action Run",
+              body: `### Action Run Output \n\n ${output}`
+            });
+
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0          # diff mode needs the PR's base commit
-      - run: script -q -c "draugr scan draugr.saga.yaml" draugr_results.txt
+      - run: draugr scan draugr.saga.yaml
         continue-on-error: true  # <--- Forces the workflow to keep going
       # - uses: github/codeql-action/upload-sarif@v4
       #   with:
@@ -28,51 +44,3 @@ jobs:
       #     # fail-on: P1           # (scan/push) gate the build; the default
       #     # fail-on-new: P1       # (diff/PR)   gate only on findings this PR introduces
       #     # diff-view: actions    # (diff/PR)   the comment lists what to do, not every finding
-      - uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-
-            // Read the text file from the runner workspace
-            const filePath = 'draugr_results.txt';
-            const fileContent = fs.readFileSync(filePath, 'utf8');
-
-            // Example 1: Split file into lines and filter specific lines
-            const lines = fileContent.split(/\r?\n/);
-            const errorLines = lines.filter(line => line.includes('ERROR'));
-
-            // Example 2: Extract specific metrics using Regular Expressions
-            const scoreMatch = fileContent.match(/Score:\s*(\d+)/);
-            const score = scoreMatch ? scoreMatch[1] : 'N/A';
-
-            // Build the GitHub Issue body
-            const issueBody = `
-            ### 📄 Text File Analysis Report
-
-            * **Total Lines Processed:** ${lines.length}
-            * **Extracted Score:** ${score}
-            * **Errors Found:** ${errorLines.length}
-
-            #### 🔍 Error Details:
-            \`\`\`text
-            ${errorLines.length > 0 ? errorLines.join('\n') : 'No errors found!'}
-            \`\`\`
-
-            #### 📜 Full Raw Output:
-            <details>
-            <summary>Click to expand</summary>
-
-            \`\`\`text
-            ${fileContent}
-            \`\`\`
-            </details>
-            `;
-
-            // Create the issue
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: `Parsed Report - Score: ${score}`,
-              body: issueBody,
-              labels: ['parsed-report']
-            });
