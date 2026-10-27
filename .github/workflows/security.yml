@@ -20,4 +20,4 @@ jobs:
           tools: true             # provision the scanners the controls need
           # fail-on: P1           # (scan/push) gate the build; the default
           # fail-on-new: P1       # (diff/PR)   gate only on findings this PR introduces
-          # diff-view: actions    # (diff/PR)   the comment lists what to do, not every finding
+          diff-view: actions    # (diff/PR)   the comment lists what to do, not every finding
