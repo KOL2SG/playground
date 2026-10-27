@@ -9,10 +9,18 @@ permissions:
   security-events: write        # push: upload SARIF to code scanning
   pull-requests: write          # PRs: post the sticky diff comment
   issues: write
+
 jobs:
   draugr:
     runs-on: [self-hosted, Linux, X64, qwen3-coder]
     steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0          # diff mode needs the PR's base commit
+
+      - run: draugr scan draugr.saga.yaml
+        continue-on-error: true  # <--- Forces the workflow to keep going
+
       - name: Post to Issue via GitHub Script
         uses: actions/github-script@v9
         env:
@@ -29,11 +37,6 @@ jobs:
               body: `### Action Run Output \n\n ${output}`
             });
 
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0          # diff mode needs the PR's base commit
-      - run: draugr scan draugr.saga.yaml
-        continue-on-error: true  # <--- Forces the workflow to keep going
       # - uses: github/codeql-action/upload-sarif@v4
       #   with:
       #     sarif_file: draugr-out/results.sarif # Path to the generated SARIF file
