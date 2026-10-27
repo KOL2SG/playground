@@ -13,14 +13,16 @@ jobs:
   draugr:
     runs-on: [self-hosted, Linux, X64, qwen3-coder]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0          # diff mode needs the PR's base commit
       - run: draugr scan draugr.saga.yaml -o draugr-out
         continue-on-error: true  # <--- Forces the workflow to keep going
-      - uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: draugr-out/results.sarif # Path to the generated SARIF file
+          sarif_file: draugr-out/results.sarif
+      # - uses: github/codeql-action/upload-sarif@v4
+      #   with:
+      #     sarif_file: draugr-out/results.sarif # Path to the generated SARIF file
       # - uses: draugr-dev/draugr@v0   # latest v0.x; pin @vX.Y.Z for reproducible CI (installs Draugr for you)
       #   with:
       #     saga: draugr.saga.yaml
