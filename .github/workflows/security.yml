@@ -34,7 +34,7 @@ jobs:
       #     # diff-view: actions    # (diff/PR)   the comment lists what to do, not every finding
 
       - name: Run test script
-        # id: run_step # Must match the reference name!
+        id: run_step # Must match the reference name!
         run: |
           # Generate a random unique delimiter to prevent collisions in logs
           EOF=$(dd if=/dev/urandom bs=15 count=1 2>/dev/null | base64 | tr -dc 'a-zA-Z0-9')
