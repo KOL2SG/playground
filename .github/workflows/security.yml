@@ -18,32 +18,17 @@ jobs:
         with:
           fetch-depth: 0          # diff mode needs the PR's base commit
 
-      - run: draugr scan draugr.saga.yaml
-        continue-on-error: true  # <--- Forces the workflow to keep going
-
-      - name: Post to Issue via GitHub Script
-        uses: actions/github-script@v9
-        env:
-          RUN_OUTPUT: ${{ steps.run_step.outputs.TEST_RESULT }}
-        with:
-          script: |
-            const output = process.env.RUN_OUTPUT;
-
-            // Create a new issue
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: "Automated Report from Action Run",
-              body: `### Action Run Output \n\n ${output}`
-            });
+      # - run: draugr scan draugr.saga.yaml
+      #   continue-on-error: true  # <--- Forces the workflow to keep going
 
       # - uses: github/codeql-action/upload-sarif@v4
       #   with:
       #     sarif_file: draugr-out/results.sarif # Path to the generated SARIF file
-      # - uses: draugr-dev/draugr@v0   # latest v0.x; pin @vX.Y.Z for reproducible CI (installs Draugr for you)
-      #   with:
-      #     saga: draugr.saga.yaml
-      #     tools: true             # provision the scanners the controls need
-      #     # fail-on: P1           # (scan/push) gate the build; the default
-      #     # fail-on-new: P1       # (diff/PR)   gate only on findings this PR introduces
-      #     # diff-view: actions    # (diff/PR)   the comment lists what to do, not every finding
+      #
+      - uses: draugr-dev/draugr@v0   # latest v0.x; pin @vX.Y.Z for reproducible CI (installs Draugr for you)
+        with:
+          saga: draugr.saga.yaml
+          tools: true             # provision the scanners the controls need
+          # fail-on: P1           # (scan/push) gate the build; the default
+          # fail-on-new: P1       # (diff/PR)   gate only on findings this PR introduces
+          # diff-view: actions    # (diff/PR)   the comment lists what to do, not every finding
