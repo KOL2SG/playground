@@ -7,6 +7,7 @@ permissions:
   contents: read
   security-events: write        # push: upload SARIF to code scanning
   pull-requests: write          # PRs: post the sticky diff comment
+  issues: write
 jobs:
   draugr:
     runs-on: [self-hosted, Linux, X64, qwen3-coder]
@@ -21,3 +22,18 @@ jobs:
           # fail-on: P1           # (scan/push) gate the build; the default
           # fail-on-new: P1       # (diff/PR)   gate only on findings this PR introduces
           diff-view: actions    # (diff/PR)   the comment lists what to do, not every finding
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Workflow Alert: Automated Scan Findings',
+              body: `### Workflow Execution Details
+              - **Triggered By:** ${context.actor}
+              - **Commit:** ${context.sha}
+              - **Status:** Action completed with findings.
+
+              ### Summary of Findings
+              ${process.env.FINDINGS_SUMMARY}`
+            })
