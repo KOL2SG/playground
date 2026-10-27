@@ -24,7 +24,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: write
+  actions: read
   contents: write
   security-events: write # push: upload SARIF to code scanning
   issues: write # push: the github-issue publishers keep one issue open per failing part of the gate
