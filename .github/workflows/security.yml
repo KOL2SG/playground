@@ -99,6 +99,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          gh label create security --color "d93f0b" --description "Vulnerabilities detected by automated scans" || true
+
           gh issue create \
             --title "⚠️ Automated Scan Security Findings Detected" \
             --body "$ISSUE_BODY" \
