@@ -1,0 +1,23 @@
+name: Security
+on:
+  push:
+    branches: [all]
+  pull_request:
+permissions:
+  contents: read
+  security-events: write        # push: upload SARIF to code scanning
+  pull-requests: write          # PRs: post the sticky diff comment
+jobs:
+  draugr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # diff mode needs the PR's base commit
+      - uses: draugr-dev/draugr@v0   # latest v0.x; pin @vX.Y.Z for reproducible CI (installs Draugr for you)
+        with:
+          saga: draugr.saga.yaml
+          tools: true             # provision the scanners the controls need
+          # fail-on: P1           # (scan/push) gate the build; the default
+          # fail-on-new: P1       # (diff/PR)   gate only on findings this PR introduces
+          # diff-view: actions    # (diff/PR)   the comment lists what to do, not every finding
