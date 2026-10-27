@@ -18,9 +18,9 @@ jobs:
           fetch-depth: 0          # diff mode needs the PR's base commit
       - run: draugr scan draugr.saga.yaml -o draugr-out
         continue-on-error: true  # <--- Forces the workflow to keep going
-      - uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: draugr-out/results.sarif # Path to the generated SARIF file
+      # - uses: github/codeql-action/upload-sarif@v4
+      #   with:
+      #     sarif_file: draugr-out/results.sarif # Path to the generated SARIF file
       # - uses: draugr-dev/draugr@v0   # latest v0.x; pin @vX.Y.Z for reproducible CI (installs Draugr for you)
       #   with:
       #     saga: draugr.saga.yaml
@@ -43,3 +43,63 @@ jobs:
 #               ### Summary of Findings
 #               ${process.env.FINDINGS_SUMMARY}`
 #             })
+
+      # 2. Extract findings using Python and compile a Markdown body string
+      - name: Parse SARIF findings
+        id: parse_sarif
+        shell: python
+        run: |
+          import json
+          import os
+
+          # Read the SARIF report file
+          with open("draugr-out/results.sarif", "r") as f:
+              data = json.load(f)
+
+          findings = []
+          # Safely traverse the SARIF structural arrays
+          for run in data.get("runs", []):
+              tool_name = run.get("tool", {}).get("driver", {}).get("name", "Scanner")
+              for result in run.get("results", []):
+                  rule_id = result.get("ruleId", "UnknownRule")
+                  msg = result.get("message", {}).get("text", "No details provided.")
+                  level = result.get("level", "warning").upper()
+
+                  # Get location details if available
+                  loc = "Unknown line"
+                  if result.get("locations"):
+                      phys = result["locations"][0].get("physicalLocation", {})
+                      uri = phys.get("artifactLocation", {}).get("uri", "unknown_file")
+                      line = phys.get("region", {}).get("startLine", "?")
+                      loc = f"`{uri}` at line `{line}`"
+
+                  findings.append(f"### 🛑 [{level}] Rule: {rule_id}\n- **Tool:** {tool_name}\n- **Location:** {loc}\n- **Description:** {msg}\n\n---")
+
+          # Compile the output or write a graceful message if no bugs are found
+          if findings:
+              issue_body = "The automated tool execution discovered the following issues:\n\n" + "\n".join(findings)
+              has_findings = "true"
+          else:
+              issue_body = "🎉 Great news! The automated scan completed and found zero vulnerabilities."
+              has_findings = "false"
+
+          # Write out to GitHub Environment files safely bypassing multi-line variable blocks
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as env:
+              env.write(f"has_findings={has_findings}\n")
+
+          # Write multi-line block safely to GITHUB_ENV
+          with open(os.environ['GITHUB_ENV'], 'a') as env:
+              env.write("ISSUE_BODY<<EOF\n")
+              env.write(issue_body + "\n")
+              env.write("EOF\n")
+
+      # 3. Create a GitHub Issue using the parsed results via GitHub CLI
+      - name: Create GitHub Issue with Findings
+        if: steps.parse_sarif.outputs.has_findings == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "⚠️ Automated Scan Security Findings Detected" \
+            --body "$ISSUE_BODY" \
+            --label "bug,security"
