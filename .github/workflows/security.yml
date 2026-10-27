@@ -9,7 +9,7 @@ permissions:
   pull-requests: write          # PRs: post the sticky diff comment
 jobs:
   draugr:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, qwen3-coder]
     steps:
       - uses: actions/checkout@v4
         with:
