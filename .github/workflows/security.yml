@@ -16,7 +16,10 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0          # diff mode needs the PR's base commit
-      - run: draugr scan draugr.saga.yaml -o draugr-out
+      - run: |
+          echo "FINDINGS_SUMMARY<<EOF" >> $GITHUB_ENV
+          draugr scan draugr.saga.yaml >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
         continue-on-error: true  # <--- Forces the workflow to keep going
       # - uses: github/codeql-action/upload-sarif@v4
       #   with:
@@ -28,134 +31,18 @@ jobs:
       #     # fail-on: P1           # (scan/push) gate the build; the default
       #     # fail-on-new: P1       # (diff/PR)   gate only on findings this PR introduces
       #     # diff-view: actions    # (diff/PR)   the comment lists what to do, not every finding
-#       - uses: actions/github-script@v7
-#         with:
-#           script: |
-#             github.rest.issues.create({
-#               owner: context.repo.owner,
-#               repo: context.repo.repo,
-#               title: 'Workflow Alert: Automated Scan Findings',
-#               body: `### Workflow Execution Details
-#               - **Triggered By:** ${context.actor}
-#               - **Commit:** ${context.sha}
-#               - **Status:** Action completed with findings.
-#
-#               ### Summary of Findings
-#               ${process.env.FINDINGS_SUMMARY}`
-#             })
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Workflow Alert: Automated Scan Findings',
+              body: `### Workflow Execution Details
+              - **Triggered By:** ${context.actor}
+              - **Commit:** ${context.sha}
+              - **Status:** Action completed with findings.
 
-      # 2. Inject report.json properties into the SARIF runs schema
-      - name: Merge report.json into SARIF Report
-        id: merge_reports
-        shell: python
-        run: |
-          import json
-          import os
-
-          # Dynamic extraction of Draugr workspace outputs
-          sarif_path = "${{ steps.draugr.outputs.sarif }}"
-
-          # Default fallback paths if the environment parameters aren't bound
-          if not sarif_path or not os.path.exists(sarif_path):
-              sarif_path = "draugr-out/results.sarif"
-
-          json_report_path = "draugr-out/report.json" # Change this path if outputted elsewhere
-
-          # Gracefully exit if reports weren't produced due to scanner failure
-          if not os.path.exists(sarif_path):
-              print("Skipping merge: Base SARIF file not found.")
-              exit(0)
-
-          # Open base reports
-          with open(sarif_path, 'r') as f:
-              sarif_data = json.load(f)
-
-          # Inject priority ratings if report.json is present
-          if os.path.exists(json_report_path):
-              with open(json_report_path, 'r') as f:
-                  json_data = json.load(f)
-
-              # Pull the findings array mapping from the standard report.json layout
-              custom_findings = json_data.get("findings", [])
-
-              # Map priority rankings onto rules metadata inside the SARIF structure
-              for run in sarif_data.get("runs", []):
-                  # Ensure the run properties bucket exists
-                  if "properties" not in run:
-                      run["properties"] = {}
-
-                  # Inject summary statistics from report.json straight into the tool properties block
-                  run["properties"]["draugrSummary"] = {
-                      "score": json_data.get("score"),
-                      "verdict": json_data.get("verdict"),
-                      "totalVulnerabilities": len(custom_findings)
-                  }
-
-                  # Map specific rule priority keys matching ruleIds
-                  for result in run.get("results", []):
-                      rule_id = result.get("ruleId")
-                      # Cross reference against custom findings inside report.json
-                      for matching_item in custom_findings:
-                          if matching_item.get("id") == rule_id or matching_item.get("ruleId") == rule_id:
-                              if "properties" not in result:
-                                  result["properties"] = {}
-                              # Inject Draugr contextual priority weights
-                              result["properties"]["draugrPriority"] = matching_item.get("priority", "UNKNOWN")
-                              result["properties"]["exposure"] = matching_item.get("exposure", "UNKNOWN")
-
-          # Write out the new consolidated report format
-          with open("combined_report.sarif", "w") as f:
-              json.dump(sarif_data, f, indent=2)
-          print("Successfully generated combined_report.sarif")
-
-      # 3. Parse out the newly augmented JSON mapping fields into GitHub Issues
-      - name: Report Combined Findings to Issues
-        shell: python
-        run: |
-          import json
-          import os
-
-          if not os.path.exists("combined_report.sarif"):
-              exit(0)
-
-          with open("combined_report.sarif", "r") as f:
-              sarif = json.load(f)
-
-          findings = []
-          for run in sarif.get("runs", []):
-              # Check for the custom summary metrics injected by step 2
-              summary = run.get("properties", {}).get("draugrSummary", {})
-              verdict = summary.get("verdict", "UNKNOWN")
-
-              for result in run.get("results", []):
-                  rule_id = result.get("ruleId", "Rule")
-                  msg = result.get("message", {}).get("text", "")
-
-                  # Fetch our custom priority keys
-                  props = result.get("properties", {})
-                  priority = props.get("draugrPriority", "NOT_SET")
-                  exposure = props.get("exposure", "NOT_SET")
-
-                  findings.append(f"### 🛑 Rule: {rule_id} (Priority: **{priority}**)\n- **Exposure Context:** {exposure}\n- **Details:** {msg}\n\n---")
-
-          if findings:
-              issue_body = f"## ⚠️ Combined Draugr Security Scan Report\n" + "\n".join(findings)
-
-              # Set the Environment block for the CLI tool safely
-              with open(os.environ['GITHUB_ENV'], 'a') as env:
-                  env.write("HAS_FINDINGS=true\n")
-                  env.write("COMBINED_BODY<<EOF\n")
-                  env.write(issue_body + "\n")
-                  env.write("EOF\n")
-
-      # 4. Open the issue utilizing the newly compiled datasets
-      - name: Create Combined GitHub Issue
-        if: env.HAS_FINDINGS == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh label create security --color "d93f0b" --description "Draugr scan vulnerabilities" || true
-          gh issue create \
-            --title "⚠️ Merged Draugr Security Artifact Report" \
-            --body "$COMBINED_BODY" \
-            --label "bug,security"
+              ### Summary of Findings
+              ${process.env.FINDINGS_SUMMARY}`
+            })
