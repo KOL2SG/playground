@@ -14,7 +14,7 @@ Respond with a short bullet list covering: What is the issue, how it matters, ho
 where possible.
 
 DIFF:
-{report}
+{data_report}
 """
 
 def get_dragur_report():
