@@ -1,0 +1,33 @@
+name: AI Security Review (Self-Hosted Ollama)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read          # Needed to download/read the code changes
+  pull-requests: write    # Needed so the runner can post inline comments on the PR [source: 9]
+  issues: write           # Backup permission required by some comment actions [source: 9]
+
+jobs:
+  review:
+    runs-on: [self-hosted, Linux, X64, qwen3-coder]  # label your self-hosted runner accordingly
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Generate diff against base branch
+        run: |
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          git diff origin/${{ github.event.pull_request.base.ref }}...HEAD > pr.diff
+
+      - name: Run Ollama-backed review
+        env:
+          OLLAMA_URL: http://127.0.0.1:11434/api/generate
+          # OLLAMA_MODEL: qwen3-coder:30b
+          OLLAMA_MODEL: beam:cloud
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: python3 scripts/ai_review.py

@@ -18,14 +18,14 @@ jobs:
       - uses: actions/checkout@v6
         # with:
         #   fetch-depth: 0          # diff mode needs the PR's base commit
-      - name: Run Draugr
-        uses: draugr-dev/draugr@v0
-        with:
-          saga: draugr.saga.yaml
-          tools: true
+      # - name: Run Draugr
+      #   uses: draugr-dev/draugr@v0
+      #   with:
+      #     saga: draugr.saga.yaml
+      #     tools: true
 
-      # - run: draugr scan draugr.saga.yaml # Runs on local self-hosted runner
-      #   continue-on-error: true  # <--- Forces the workflow to keep going
+      - run: draugr scan draugr.saga.yaml -o draugr-out # Runs on local self-hosted runner
+        continue-on-error: true  # <--- Forces the workflow to keep going
 
       # - uses: github/codeql-action/upload-sarif@v4
       #   with:
