@@ -19,7 +19,7 @@ DIFF:
 
 def get_dragur_report():
     workspace = os.environ.get("GITHUB_WORKSPACE", ".")
-    report_file = os.path.join(workspace, "draugr", "report.json")
+    report_file = os.path.join(workspace, "draugr-out", "report.json")
     with open(report_file, "r", encoding="utf-8") as f:
         return f.read()
 
