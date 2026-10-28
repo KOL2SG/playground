@@ -10,7 +10,7 @@ permissions:
   issues: write           # Backup permission required by some comment actions [source: 9]
 
 jobs:
-  review:
+  security_review:
     runs-on: [self-hosted, Linux, X64, qwen3-coder]  # label your self-hosted runner accordingly
     steps:
       - name: Checkout PR
