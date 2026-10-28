@@ -10,6 +10,9 @@ permissions:
   issues: write           # Backup permission required by some comment actions [source: 9]
 
 jobs:
+  security-analysis:
+      # CORRECT: "uses" is assigned directly to the job, not inside steps! [source: 4]
+      uses: ./.github/workflows/security_check.yml@main
   review:
     runs-on: [self-hosted, Linux, X64, qwen3-coder]  # label your self-hosted runner accordingly
     steps:
@@ -17,9 +20,6 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-
-      - name: Use security check workflow
-        uses: ./.github/workflows/security_check.yml@main # Path to the child file [source: 4]
 
       - name: Run Ollama-backed security review
         env:
