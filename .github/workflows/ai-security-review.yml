@@ -10,9 +10,8 @@ permissions:
   issues: write           # Backup permission required by some comment actions [source: 9]
 
 jobs:
-  security-analysis:
-      uses: ./.github/workflows/security_check.yml@main
-
+  draugr:
+    uses: ./.github/workflows/security_check.yml@main
   review:
     runs-on: [self-hosted, Linux, X64, qwen3-coder]  # label your self-hosted runner accordingly
     steps:
