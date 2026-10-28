@@ -20,6 +20,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - run: draugr scan draugr.saga.yaml -o draugr-out # Runs on local self-hosted runner
+        continue-on-error: true  # <--- Forces the workflow to keep going
+
       - name: Run Ollama-backed security review
         env:
           OLLAMA_URL: http://127.0.0.1:11434/api/generate

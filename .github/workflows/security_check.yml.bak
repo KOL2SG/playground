@@ -6,9 +6,9 @@ on:
   # pull_request:
   #    types: [opened, synchronize, reopened]
 permissions:
-  actions: none
+  actions: read
   contents: read
-  security-events: none        # push: upload SARIF to code scanning
+  security-events: write        # push: upload SARIF to code scanning
   pull-requests: write          # PRs: post the sticky diff comment
   issues: write
 
