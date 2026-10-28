@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   security:
-    uses: ./.github/workflows/security_check.yml@main
+    uses: ./.github/workflows/security_check.yml
   review:
     runs-on: [self-hosted, Linux, X64, qwen3-coder]  # label your self-hosted runner accordingly
     steps:
