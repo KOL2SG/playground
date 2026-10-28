@@ -9,7 +9,7 @@ GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
 REPO = os.environ["GITHUB_REPOSITORY"]
 PR_NUMBER = os.environ["PR_NUMBER"]
 
-REVIEW_PROMPT = """You are a senior code reviewer. Review the following diff.
+REVIEW_PROMPT = """You are an elite code reviewer. Review the following diff.
 Respond with a short bullet list covering: likely bugs, missing tests,
 and style issues. Be specific and reference file names and line numbers
 where possible. Keep the review under 300 words.
