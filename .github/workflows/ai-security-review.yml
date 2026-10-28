@@ -18,6 +18,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Use security check workflow
+        uses: ./.github/workflows/security_check.yml@main # Path to the child file [source: 4]
+
       - name: Run Ollama-backed security review
         env:
           OLLAMA_URL: http://127.0.0.1:11434/api/generate
