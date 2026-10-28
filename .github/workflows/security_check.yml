@@ -5,12 +5,12 @@ on:
   #   branches: [main]
   # pull_request:
   #    types: [opened, synchronize, reopened]
-permissions:
-  actions: read
-  contents: read
-  security-events: write        # push: upload SARIF to code scanning
-  pull-requests: write          # PRs: post the sticky diff comment
-  issues: write
+# permissions:
+#   actions: read
+#   contents: read
+#   security-events: write        # push: upload SARIF to code scanning
+#   pull-requests: write          # PRs: post the sticky diff comment
+#   issues: write
 
 jobs:
   draugr:
