@@ -13,7 +13,7 @@ REVIEW_PROMPT = """You are a senior code reviewer. Review the following dragur r
 Respond with a short bullet list covering: What is the issue, how it matters, how to fix. Be specific and reference file names and line numbers
 where possible.
 
-DIFF:
+```json
 {data_report}
 """
 
