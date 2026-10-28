@@ -1,268 +1,272 @@
-Below is a **complete, ready‑to‑use pipeline** that lives inside the repository you already have.  
-It ties together the three pieces you already wrote:
+Below is a ready‑to‑use **README.md** that succinctly explains what your repository does, the tools it uses, and how to run the full security‑scan + LLM‑review pipeline.
 
-1. **Draugr** – run the full security scan and upload a SARIF file (so you get the nice GitHub Code Scanning UI).  
-2. **Diff generation** – create `pr.diff` for the PR that triggered the workflow.  
-3. **Ollama LLM review** – feed the diff (and optionally the Draugr JSON report) to Ollama and post the review back to the PR.
+```markdown
+# 📦 playground – Automated Vulnerability Scanning + LLM‑Powered Code Review
 
-The pipeline is expressed as a **single GitHub Actions workflow** (`.github/workflows/security‑pipeline.yml`).  
-All you need to do is copy the file into the repository and push it.  
-After that every PR (and every push to `main`/`test`) will automatically:
+This repository demonstrates a **two‑step security workflow**:
 
-* Fail the CI if a **P1** finding exists (gate defined in `draugr.saga.yaml`).  
-* Upload the SARIF results to the **Security** tab.  
-* Run the Ollama‑powered reviewer and post a comment on the PR with a concise bullet‑list of the high‑severity issues and remediation tips.
+1. **Draugr** scans the entire code‑base (C++, Go, Docker, GitHub Actions, secrets, etc.) and produces a SARIF/JSON report.
+2. **Ollama** (a self‑hosted LLM) reads the PR diff, generates a concise code‑review, and posts the review as a comment on the PR.
 
----
+The goal is to have an **automatic “scan → review → comment” loop** that surfaces high‑severity findings and gives developers actionable remediation guidance directly inside the pull‑request.
 
-## 📂 New file – `.github/workflows/security-pipeline.yml`
+---  
+
+## 📑 Table of Contents  
+
+- [What the repo contains](#-what-the-repo-contains)  
+- [Prerequisites](#-prerequisites)  
+- [Getting started](#-getting-started)  
+- [Run a full Draugr scan locally](#-run-a-full-draugr-scan-locally)  
+- [Generate a diff for a PR](#-generate-a-diff-for-a-pr)  
+- [LLM review with Ollama](#-llm-review-with-ollama)  
+- [GitHub Actions CI integration](#-github-actions-ci-integration)  
+- [Understanding the Draugr report](#-understanding-the-draugr-report)  
+- [Customising the pipeline](#-customising-the-pipeline)  
+- [Contributing](#-contributing)  
+- [License](#-license)  
+
+---  
+
+## 🧩 What the repo contains  
+
+| Path / File | Language / Purpose | Why it matters |
+|--------------|----------------------|----------------|
+| `cpp/` | C++ examples (`palindrome_Linklist.cpp`, `ringbuffer.cpp`, …) | Provides source for **SAST** scanning (Semgrep). |
+| `GO/duplicate.go` | Go function | Used by **govulncheck** (Go reachability analysis). |
+| `.github/workflows/` | GitHub‑Actions YAML files (some intentionally use mutable tags) | Triggers **mutable‑action‑tag** findings – a classic supply‑chain risk. |
+| `docker-compose.yml` | Docker service (`open-webui`) | Demonstrates a **writable root filesystem** issue for Trivy. |
+| `scripts/ai_review.py` | Python script that calls Ollama and posts a comment | Implements the **LLM review** step. |
+| `draugr.saga.yaml` | Full Draugr configuration (controls, gates, publishers) | Drives which scanners run and how the gate is evaluated (`failOn: P1`). |
+| `draugr-out/` (generated) | `report.json` + `results.sarif` | Output of the latest Draugr scan. |
+| `.zed/settings.json` | Enables inline debug previews (optional) | Helpful for local debugging in Zed. |
+
+---  
+
+## ✅ Prerequisites  
+
+| Tool | Install (Linux/macOS) | Remarks |
+|------|----------------------|---------|
+| **Docker** | `curl -fsSL https://get.docker.com | sh` | Needed for Ollama. |
+| **Ollama** | `curl -L https://ollama.com/install.sh | sh` | Run `ollama serve &`. |
+| **Ollama model** (e.g., `qwen3-coder:30b`) | `ollama pull qwen3-coder:30b` | Any model that accepts a `prompt`. |
+| **Draugr binary** | ```bash\ncurl -L https://github.com/draugr-dev/draugr/releases/latest/download/draugr-linux-amd64 -o draugr\nchmod +x draugr\n``` | Place in repo root or add to `$PATH`. |
+| **Python 3.12+** | `python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt` | Installs `requests` (used by the script). |
+| **Git** | `git --version` | Needed to generate diffs. |
+| **GitHub token** (`repo` + `issues` scopes) | Create a personal access token or use `${{ secrets.GITHUB_TOKEN }}` in Actions. | Required for posting PR comments. |
+
+---  
+
+## 🚀 Getting started  
+
+```bash
+# Clone the repo
+git clone https://github.com/KOL2SG/playground.git
+cd playground
+
+# (Optional) set up a clean virtualenv for the review script
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Start Ollama (if not already running)
+ollama serve &
+
+# Pull an LLM model
+ollama pull qwen3-coder:30b
+
+# Export required environment variables for local testing
+export OLLAMA_URL="http://127.0.0.1:11434/api/generate"
+export OLLAMA_MODEL="qwen3-coder:30b"
+export GITHUB_TOKEN="ghp_XXXXXXXXXXXXXXXXXXXX"
+export GITHUB_REPOSITORY="KOL2SG/playground"
+export PR_NUMBER="1"   # replace with a real PR number
+```
+
+You are now ready to run the scan + review pipeline.
+
+---  
+
+## 🛡️ Run a full Draugr scan locally  
+
+```bash
+# From the repository root
+./draugr scan draugr.saga.yaml -o draugr-out
+```
+
+*Outputs*  
+
+- `draugr-out/report.json` – human‑readable summary (verdict, priorities, actions).  
+- `draugr-out/results.sarif` – SARIF file you can upload to **GitHub Code Scanning**.  
+
+The first run intentionally fails the gate (`failOn: P1`) because the repo includes a few high‑severity demo findings (mutable GitHub‑Action tags, Go stdlib CVEs, writable Docker root, …).
+
+---  
+
+## 📄 Generate a diff for a PR  
+
+The LLM review script expects a file named `pr.diff` at the repository root.
+
+```bash
+# Example: diff of the current branch vs main
+git fetch origin main
+git diff origin/main...HEAD > pr.diff
+```
+
+Feel free to use any commit range (`git diff <base>..<head>`) – the diff will be embedded in the prompt sent to the LLM.
+
+---  
+
+## 🤖 LLM review with Ollama  
+
+```bash
+python scripts/ai_review.py
+```
+
+**What the script does**
+
+1. Reads `pr.diff`.  
+2. Calls Ollama’s `/api/generate` endpoint with a prompt that contains the full diff.  
+3. Receives a short bullet‑list review (≤ 300 words).  
+4. Posts the review as a comment on the PR via the GitHub REST API.  
+
+If you only want to see the raw LLM output, comment out the `post_comment(review)` line and simply `print(review)`.
+
+---  
+
+## 📦 GitHub Actions CI integration  
+
+Two workflows live in `.github/workflows/`:
+
+| Workflow | Trigger | Main steps |
+|----------|----------|------------|
+| `ai-code-reviews.yml` | `pull_request` (opened / synchronize / reopened) | Generates `pr.diff`, runs `scripts/ai_review.py`, posts the LLM comment. |
+| `security.yml` | `push` to `main`/`test` **and** `pull_request` | Runs Draugr (`draugr-dev/draugr@v0`), uploads SARIF (`github/codeql-action/upload-sarif@v3`), fails the job when any **P1** finding is present. |
+
+### Minimal pipeline (full example)
 
 ```yaml
-# ──────────────────────────────────────────────────────────────────────
-#  security‑pipeline.yml
-#  Runs Draugr → uploads SARIF → generates a PR diff → calls Ollama
-#  → posts an automated review comment on the PR.
-# ──────────────────────────────────────────────────────────────────────
-name: Security & LLM Review Pipeline
-
-# Run on pushes to the protected branches *and* on any PR activity.
+name: Security & LLM Review
 on:
-  push:
-    branches: [main, test]
   pull_request:
     types: [opened, synchronize, reopened]
 
-# --------------------------------------------------------------
-#  TWO JOBS – scan first, then review (review needs the scan to finish)
-# --------------------------------------------------------------
 jobs:
-  # ------------------------------------------------------------
-  #  1️⃣  Draugr scan
-  # ------------------------------------------------------------
   draugr-scan:
-    # Use a normal GitHub‑hosted runner – no Ollama needed here.
     runs-on: ubuntu-latest
-    permissions:
-      # Required to upload SARIF (code‑scanning) and comment on PRs.
-      contents: read
-      security-events: write
-      pull-requests: write
     steps:
-      # ------------------------------------------------------------------
-      #  Checkout the repository (full history – required for diff mode)
-      # ------------------------------------------------------------------
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
-          fetch-depth: 0   # needed for Draugr “diff” mode
-
-      # ------------------------------------------------------------------
-      #  Run Draugr – this will respect the gate defined in draugr.saga.yaml
-      # ------------------------------------------------------------------
-      - name: Run Draugr scan
-        id: draugr
-        uses: draugr-dev/draugr@v0            # always pulls latest v0.x release
+          fetch-depth: 0
+      - name: Run Draugr
+        uses: draugr-dev/draugr@v0
         with:
-          saga: draugr.saga.yaml              # your full descriptor
-          tools: true                         # provision Trivy, Semgrep, … 
-          fail-on: P1                         # gate – fail CI on any P1 finding
-          feeds: true                         # update vulnerability feeds first
-
-      # ------------------------------------------------------------------
-      #  Upload the SARIF file so the Findings appear in the Security tab
-      # ------------------------------------------------------------------
-      - name: Upload SARIF to GitHub Code Scanning
+          saga: draugr.saga.yaml
+          tools: true
+          fail-on: P1
+          feeds: true
+      - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: draugr-out/results.sarif
 
-      # ------------------------------------------------------------------
-      #  Export the path to the Draugr JSON report for the next job
-      # ------------------------------------------------------------------
-      - name: Export report location
-        run: echo "REPORT_PATH=$(pwd)/draugr-out/report.json" >> $GITHUB_ENV
-
-  # ------------------------------------------------------------
-  #  2️⃣  Ollama LLM review (runs only after a successful scan)
-  # ------------------------------------------------------------
   llm-review:
-    # Needs a runner that can talk to your local Ollama instance.
-    # If you already have a self‑hosted runner that runs the Ollama
-    # daemon, point the job at that label.
-    runs-on: [self-hosted, Linux, X64, qwen3-coder]   # adjust to your runner label
     needs: draugr-scan
+    runs-on: self-hosted               # must have access to Ollama
     env:
-      # ----------------------------------------------------------------
-      #  Ollama endpoint – change if you run it on a different host/port
-      # ----------------------------------------------------------------
       OLLAMA_URL: http://127.0.0.1:11434/api/generate
-      OLLAMA_MODEL: qwen3-coder:30b          # any model that accepts a prompt
-      # ----------------------------------------------------------------
-      #  GitHub API credentials – automatically provided by GitHub Actions
-      # ----------------------------------------------------------------
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GITHUB_REPOSITORY: ${{ github.repository }}
-      PR_NUMBER: ${{ github.event.pull_request.number }}
+      OLLAMA_MODEL: qwen3-coder:30b
     steps:
-      # ----------------------------------------------------------------
-      #  Checkout the same code that was scanned
-      # ----------------------------------------------------------------
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      # ----------------------------------------------------------------
-      #  Generate a diff for the PR (the LLM reviewer reads this)
-      # ----------------------------------------------------------------
+      - uses: actions/checkout@v6
       - name: Generate PR diff
-        if: ${{ github.event_name == 'pull_request' }}
         run: |
-          # Diff the PR against its base branch
           git fetch origin ${{ github.base_ref }}
           git diff origin/${{ github.base_ref }}...HEAD > pr.diff
-
-      # ----------------------------------------------------------------
-      #  OPTIONAL – include the Draugr JSON report inside the LLM prompt.
-      #  The script will automatically read the env var REPORT_PATH.
-      # ----------------------------------------------------------------
-      - name: Export Draugr report path for the script
-        run: echo "DRAUGR_JSON=${{ env.REPORT_PATH }}" >> $GITHUB_ENV
-
-      # ----------------------------------------------------------------
-      #  Run the Python reviewer (scripts/ai_review.py)
-      # ----------------------------------------------------------------
-      - name: Run Ollama review and comment on PR
+      - name: Run LLM review
         run: |
-          # Activate a virtualenv if you keep one in the repo
-          if [ -f venv/bin/activate ]; then source venv/bin/activate; fi
           python scripts/ai_review.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
 ```
 
-### What the workflow does, step‑by‑step
-
-| Job | Step | What happens |
-|-----|------|---------------|
-| **draugr‑scan** | Checkout | Full repository (depth 0) so Draugr can see the whole tree. |
-| | Run Draugr | Executes `draugr scan draugr.saga.yaml -o draugr-out`. The gate fails on any **P1** finding (`fail-on: P1`). |
-| | Upload SARIF | Sends `draugr-out/results.sarif` to the **GitHub Security** tab. |
-| | Export report path | Stores the absolute path of `draugr-out/report.json` in an environment variable for the next job. |
-| **llm‑review** | Checkout | Ensures the second job works on the same commit. |
-| | Generate PR diff | Produces `pr.diff` (only on PR events). |
-| | Export report path | Makes the JSON report visible to `ai_review.py` via `DRAUGR_JSON`. |
-| | Run Ollama review | Calls `scripts/ai_review.py` which: <br>  · reads `pr.diff` <br>  · optionally reads `DRAUGR_JSON` and adds it to the prompt <br>  · sends the prompt to Ollama <br>  · posts the LLM’s bullet‑list review as a comment on the PR. |
-
----
-
-## 🛠️ Small change to `scripts/ai_review.py` (optional)
-
-If you want the LLM to *also* see the Draugr JSON findings (highly recommended – it lets the model talk about the exact vulnerabilities), replace the `call_ollama` function with the version below. It appends the report JSON to the prompt if the `DRAUGR_JSON` environment variable exists.
-
-```python
-import json
-import os
-import urllib.request
-
-# … (the top of the file stays the same) …
-
-REVIEW_PROMPT = """You are a senior security reviewer.  
-Your job is to comment on the diff **and** the security findings that are listed below.
-
-DIFF:
-{diff}
+> **Security tip:** All `uses:` statements must be **pinned to a full commit SHA** (or a fixed release) to avoid the mutable‑action‑tag finding that Draugr flags.
 
 ---  
 
-SECURITY FINDINGS (JSON):
-{findings}
+## 🔎 Understanding the Draugr report  
 
-Give a short bullet‑list (≤ 300 words) that:
-* Highlights the most critical issues (e.g., any P1 findings).  
-* Points to the exact file/line in the diff where the problem appears.  
-* Suggests concrete remediation steps (e.g., “pin actions/checkout to a SHA”, “upgrade Go stdlib to 1.26.10”, “set read_only: true in docker‑compose”).  
+Open `draugr-out/report.json` (or view the SARIF in the **Security** tab of the repo).
 
-Keep the tone friendly and actionable."""
- 
-def load_findings():
-    """Read the Draugr JSON report if the env var is set."""
-    path = os.getenv("DRAUGR_JSON")
-    if path and os.path.isfile(path):
-        with open(path, "r", encoding="utf-8") as f:
-            return json.dumps(json.load(f), indent=2)
-    return "{}"   # empty JSON if no report is supplied
+| Field | Meaning |
+|-------|----------|
+| `verdict` | `fail` indicates at least one **P1** finding exists. |
+| `gate.failOnPriority` | Priority that triggers a failure (`P1` by default). |
+| `controls[]` | Result per scanner type (SAST, SCA, IaC, Secrets, etc.). |
+| `actions[]` | Remediation actions Draugr can suggest (e.g., “Pin mutable action tag to SHA”, “Upgrade Go stdlib”). |
+| `priorities` | Count of findings by priority (`p1`, `p2`, `p3`, `p4`). |
+| `reachability` | For Go, shows how many vulnerabilities are actually reachable from the code. |
 
-def call_ollama(diff_text):
-    payload = json.dumps({
-        "model": MODEL,
-        "prompt": REVIEW_PROMPT.format(
-            diff=diff_text,               # full diff – no slicing
-            findings=load_findings()      # embeds the full JSON report
-        ),
-        "stream": False,
-    }).encode("utf-8")
-    req = urllib.request.Request(OLLAMA_URL, data=payload,
-                                 headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=120) as resp:
-        body = json.loads(resp.read())
-    return body["response"]
-```
+**Typical remediation workflow**
 
-> **Why this works:**  
-> * The placeholder names (`{diff}` and `{findings}`) now match the `format(...)` call, so no `KeyError` occurs.  
-> * By passing the full Draugr JSON, the LLM can reference the exact `id`, `title`, and `location` fields, making the review far more useful.  
+1. Fix all **P1** actions (often a 1‑line change, e.g., pinning an action).  
+2. Re‑run Draugr; the gate should now be `pass`.  
+3. The LLM review will automatically pick up the remaining changes and provide a clean comment.
 
-If you prefer to keep the original, tiny script (only diff), simply leave it unchanged – the pipeline will still work.
+---  
 
----
+## 🛠️ Customising the pipeline  
 
-## 📦 How to try the pipeline locally (optional)
+| What you want to change | How to do it |
+|-------------------------|--------------|
+| **Pin mutable action tags** | Replace `uses: actions/checkout@vX` with a concrete 40‑character SHA (e.g., `uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608`). |
+| **Swap the LLM model** | Change `OLLAMA_MODEL` in the environment (or in the workflow `env:` block). |
+| **Raise/lower the gate** | Edit `draugr.saga.yaml` → `config.gate.failOn` (e.g., `P2` for a more permissive gate). |
+| **Run only selected scanners** | In `draugr.saga.yaml`, under `config.controls.<scanner>.enabled`, set `true`/`false`. |
+| **Increase diff size sent to Ollama** | Remove the slice (`diff_text[:12000]`) or increase the limit in `scripts/ai_review.py`. |
+| **Add the Draugr findings to the LLM prompt** | Append the JSON report to the prompt in `ai_review.py` (helps the model talk directly about the high‑severity items). |
+| **Add a `--dry-run` flag** | Modify `ai_review.py` to print the review instead of posting when `--dry-run` is passed. |
 
-You can run the same steps on your machine to validate everything before pushing:
+---  
+
+## 🤝 Contributing  
+
+We’d love your improvements!  
+
+1. **Fork** the repo and create a branch.  
+2. Make changes (e.g., a better prompt, a new scanner, offline fallback).  
+3. Test locally: `./draugr scan …` → generate a diff → `python scripts/ai_review.py`.  
+4. Push and open a PR – the CI will automatically run the full scan + LLM review, so reviewers can see the effect immediately.
+
+### Good first issues
+
+- Add a `--dry-run` flag to `ai_review.py`.  
+- Replace the hard‑coded prompt with a Jinja2 template that can be overridden via an env var.  
+- Implement a fallback that uses the GitHub Copilot API when Ollama is unreachable.  
+- Write a small action that automatically updates pinned SHA values for mutable actions.
+
+---  
+
+## 📄 License  
+
+This repository is licensed under the **MIT License** – see the `LICENSE` file for details.
+
+---  
+
+## 🎯 TL;DR – One‑liner to try locally  
 
 ```bash
-# 1️⃣ Run Draugr (replicates the first job)
+# 1️⃣ Scan the repo
 ./draugr scan draugr.saga.yaml -o draugr-out
 
-# 2️⃣ Generate a diff (replace main with the branch you want to test)
+# 2️⃣ Generate a diff (example: current branch vs main)
 git fetch origin main
 git diff origin/main...HEAD > pr.diff
 
-# 3️⃣ Export the path to the report so the script can include it
-export DRAUGR_JSON=$(pwd)/draugr-out/report.json
-
-# 4️⃣ Run the LLM reviewer (make sure Ollama is running)
+# 3️⃣ Run the LLM review and post it to PR #42
+export PR_NUMBER=42   # replace with your PR number
 python scripts/ai_review.py
 ```
 
-You’ll see the LLM’s bullet‑list printed (and, if you set `PR_NUMBER`, it will also be posted to the PR).
-
----
-
-## 🎯 What you get out of the box
-
-* **Zero‑manual gating** – the job fails automatically on any P1 vulnerability.  
-* **SARIF visualisation** – open the *Security* tab on GitHub to browse every finding, filter by priority, and see the exact code locations.  
-* **LLM‑generated PR comment** – a short, actionable review that mentions the high‑severity issues and how to fix them, posted directly on the PR for every reviewer to see.  
-* **Fully reproducible CI** – the same workflow runs on every push and PR, so you never forget to scan or comment again.
-
----
-
-## 🚀 Next steps (optional enhancements)
-
-| Idea | How to implement |
-|------|-----------------|
-| **Auto‑apply fixes** (e.g., pin the action tag automatically) | Use `draugr apply --action-id <id>` in a separate step, then push a new commit. |
-| **Chunked diff for huge PRs** | Add a small Python helper that splits `pr.diff` into 5 k‑character chunks and sends them sequentially to Ollama. |
-| **Different LLMs** | Change `OLLAMA_MODEL` env var or add a matrix strategy in the workflow to test several models. |
-| **Slack / Teams notification** | Add a step after the review to post the LLM summary to a webhook. |
-| **Aggregated dashboard** | Export the SARIF data to a custom dashboard (e.g., via `gh api` or a third‑party tool). |
-
----
-
-### 🎉 You’re all set!
-
-1. **Add the workflow file** (`.github/workflows/security-pipeline.yml`) to the repository.  
-2. **Commit & push** – GitHub will automatically run the pipeline on the next PR or push to `main`/`test`.  
-3. Open a PR, watch the **Security** tab for findings, and see the **LLM comment** appear once the scan finishes.
-
-That’s the whole “scan → review → comment” loop you asked for – everything lives in the repo, needs no external services (apart from Ollama, which you already host), and gives you immediate, human‑readable feedback on every change. Happy secure coding!
+You’ll see a concise, bullet‑point comment on the PR that summarises the high‑severity findings and suggests concrete fixes, while the SARIF report is available in GitHub Code Scanning for a complete view. Enjoy a fully automated, **security‑first** development loop!
