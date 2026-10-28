@@ -27,7 +27,7 @@ def call_ollama(draugr_report):
     data_report = json.dumps(draugr_report, indent=2)
     payload = json.dumps({
         "model": MODEL,
-        "prompt": REVIEW_PROMPT.format(diff=data_report),
+        "prompt": REVIEW_PROMPT.format(data_report=data_report),
         "stream": False,
     }).encode("utf-8")
     req = urllib.request.Request(OLLAMA_URL, data=payload, headers={"Content-Type": "application/json"})
