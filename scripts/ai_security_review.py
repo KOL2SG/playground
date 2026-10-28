@@ -24,7 +24,7 @@ def get_dragur_report():
         return json.load(f)
 
 def call_ollama(draugr_report):
-    data_report = json.dumps(draugr_report, intent=2)
+    data_report = json.dumps(draugr_report, indent=2)
     payload = json.dumps({
         "model": MODEL,
         "prompt": REVIEW_PROMPT.format(diff=data_report),
