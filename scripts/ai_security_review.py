@@ -14,7 +14,7 @@ Respond with a short bullet list covering: What is the issue, how it matters, ho
 where possible.
 
 DIFF:
-{data_report}
+{draugr_report}
 """
 
 def get_dragur_report():
@@ -24,10 +24,10 @@ def get_dragur_report():
         return json.load(f)
 
 def call_ollama(draugr_report):
-    data_report = json.dumps(draugr_report)
+    # data_report = json.dumps(draugr_report)
     payload = json.dumps({
         "model": MODEL,
-        "prompt": REVIEW_PROMPT.format(diff=data_report),
+        "prompt": REVIEW_PROMPT.format(diff=draugr_report),
         "stream": False,
     }).encode("utf-8")
     req = urllib.request.Request(OLLAMA_URL, data=payload, headers={"Content-Type": "application/json"})
