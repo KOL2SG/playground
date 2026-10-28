@@ -3,8 +3,8 @@ import os
 import urllib.request
 
 OLLAMA_URL = os.environ["OLLAMA_URL"]  # e.g. http://10.20.0.15:11434/api/generate
-# MODEL = os.environ.get("OLLAMA_MODEL", "qwen3-coder:30b")
-MODEL = os.environ.get("OLLAMA_MODEL", "beam:cloud")
+MODEL = os.environ.get("OLLAMA_MODEL", "qwen3-coder:30b")
+# MODEL = os.environ.get("OLLAMA_MODEL", "beam:cloud")
 GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
 REPO = os.environ["GITHUB_REPOSITORY"]
 PR_NUMBER = os.environ["PR_NUMBER"]
@@ -24,9 +24,10 @@ def get_dragur_report():
         return json.load(f)
 
 def call_ollama(draugr_report):
+    data_report = json.dumps(draugr_report)
     payload = json.dumps({
         "model": MODEL,
-        "prompt": REVIEW_PROMPT.format(diff=draugr_report),
+        "prompt": REVIEW_PROMPT.format(diff=data_report),
         "stream": False,
     }).encode("utf-8")
     req = urllib.request.Request(OLLAMA_URL, data=payload, headers={"Content-Type": "application/json"})

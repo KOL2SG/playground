@@ -26,8 +26,8 @@ jobs:
       - name: Run Ollama-backed review
         env:
           OLLAMA_URL: http://127.0.0.1:11434/api/generate
-          # OLLAMA_MODEL: qwen3-coder:30b
-          OLLAMA_MODEL: beam:cloud
+          OLLAMA_MODEL: qwen3-coder:30b
+          # OLLAMA_MODEL: beam:cloud
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: python3 scripts/ai_review.py
