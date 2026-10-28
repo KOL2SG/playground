@@ -21,7 +21,7 @@ def get_dragur_report():
     workspace = os.environ.get("GITHUB_WORKSPACE", ".")
     report_file = os.path.join(workspace, "draugr-out", "report.json")
     with open(report_file, "r", encoding="utf-8") as f:
-        return f.read()
+        return json.load(f)
 
 def call_ollama(draugr_report):
     payload = json.dumps({
