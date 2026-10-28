@@ -10,7 +10,7 @@ REPO = os.environ["GITHUB_REPOSITORY"]
 PR_NUMBER = os.environ["PR_NUMBER"]
 
 REVIEW_PROMPT = """You are a senior code reviewer. Review the following dragur report.
-Respond with a short bullet list covering: What is the issue, how it matters, how to fix. Be specific and reference file names and line numbers
+Respond starting with a table of found issues, how it matters, how to fix. Be specific and reference file names and line numbers
 where possible.
 
 ```json
