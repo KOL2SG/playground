@@ -44,7 +44,7 @@ jobs:
 
           # 1. Compile the file into its own standalone executable
           clang++ -O0 -g -fprofile-instr-generate -fcoverage-mapping \
-            "$filepath" -o "build/binaries/${basename}_exec"
+            "$filepath" -o "build/binaries/${basename}_exec" || true
 
           # 2. Run the specific binary to capture run-time coverage profiling
           LLVM_PROFILE_FILE="build/profiles/${basename}-%p.profraw" "./build/binaries/${basename}_exec" || true
@@ -60,7 +60,7 @@ jobs:
           llvm-cov show "build/binaries/${basename}_exec" -instr-profile="build/profiles/${basename}.profdata" \
             -format=html -output-dir="build/reports/${basename}_coverage"
         done
-      continue-on-error: true
+      # continue-on-error: true
 
     - name: Upload Individual Coverage Reports
       uses: actions/upload-artifact@v4
