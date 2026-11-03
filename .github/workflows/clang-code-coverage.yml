@@ -44,7 +44,7 @@ jobs:
 
           # 1. Compile the file into its own standalone executable
           clang++ -O0 -g -fprofile-instr-generate -fcoverage-mapping \
-            "$filepath" -o "build/binaries/${basename}_exec" || true
+            "$filepath" -o "build/binaries/${basename}_exec"
 
           # 2. Run the specific binary to capture run-time coverage profiling
           LLVM_PROFILE_FILE="build/profiles/${basename}-%p.profraw" "./build/binaries/${basename}_exec" || true

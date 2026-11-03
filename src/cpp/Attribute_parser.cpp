@@ -95,65 +95,65 @@ int main() {
 
 
 
-TestCase:
-10 10
-<a value = "GoodVal">
-<b value = "BadVal" size = "10">
-</b>
-<c height = "auto">
-<d size = "3">
-<e strength = "2">
-</e>
-</d>
-</c>
-</a>
-a~value
-b~value
-a.b~size
-a.b~value
-a.b.c~height
-a.c~height
-a.d.e~strength
-a.c.d.e~strength
-d~sze
-a.c.d~size
-
-GoodVal
-Not Found!
-10
-BadVal
-Not Found!
-auto
-Not Found!
-2
-Not Found!
-3
-
-GoodVal
-Not Found!
-10
-BadVal
-Not Found!
-auto
-Not Found!
-2
-Not Found!
-3
-
-Test case 2:
-6 4
-<a>
-<b name = "tag_one">
-<c name = "tag_two" value = "val_907">
-</c>
-</b>
-</a>
-a.b~name
-a.b.c~value
-a.b.c~src
-a.b.c.d~name
-
-tag_one
-val_907
-Not Found!
-Not Found!
+// TestCase:
+// 10 10
+// <a value = "GoodVal">
+// <b value = "BadVal" size = "10">
+// </b>
+// <c height = "auto">
+// <d size = "3">
+// <e strength = "2">
+// </e>
+// </d>
+// </c>
+// </a>
+// a~value
+// b~value
+// a.b~size
+// a.b~value
+// a.b.c~height
+// a.c~height
+// a.d.e~strength
+// a.c.d.e~strength
+// d~sze
+// a.c.d~size
+//
+// GoodVal
+// Not Found!
+// 10
+// BadVal
+// Not Found!
+// auto
+// Not Found!
+// 2
+// Not Found!
+// 3
+//
+// GoodVal
+// Not Found!
+// 10
+// BadVal
+// Not Found!
+// auto
+// Not Found!
+// 2
+// Not Found!
+// 3
+//
+// Test case 2:
+// 6 4
+// <a>
+// <b name = "tag_one">
+// <c name = "tag_two" value = "val_907">
+// </c>
+// </b>
+// </a>
+// a.b~name
+// a.b.c~value
+// a.b.c~src
+// a.b.c.d~name
+//
+// tag_one
+// val_907
+// Not Found!
+// Not Found!
