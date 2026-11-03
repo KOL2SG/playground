@@ -27,8 +27,8 @@ jobs:
         # Compile all C/C++ files.
         # -fprofile-instr-generate: Instruments the binary to gather profile data
         # -fcoverage-mapping: Embeds the coverage mapping data in the executable
-        clang++ -O0 -g -fprofile-instr-generate -fcoverage-mapping \
-          src/cpp/*.cpp -o build/my_test_executable
+        clang++ -std=c++23 -O0 -g -fprofile-instr-generate -fcoverage-mapping \
+                  src/cpp/*.cpp -o build/my_test_executable
 
     - name: Run Instrumented Executable
       env:
