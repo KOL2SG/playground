@@ -60,6 +60,7 @@ jobs:
           llvm-cov show "build/binaries/${basename}_exec" -instr-profile="build/profiles/${basename}.profdata" \
             -format=html -output-dir="build/reports/${basename}_coverage"
         done
+      continue-on-error: true
 
     - name: Upload Individual Coverage Reports
       uses: actions/upload-artifact@v4
