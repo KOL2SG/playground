@@ -31,7 +31,7 @@ jobs:
         mkdir -p build/binaries build/profiles build/reports
 
         # Loop through every .cpp file in the src/ directory
-        for filepath in src/cpp/low_latency/*.cpp; do
+        for filepath in src/cpp/*.cpp; do
           [ -e "$filepath" ] || continue # Handle empty directory edgecase
 
           # Extract the file name without directories and extensions (e.g. "src/main.cpp" -> "main")
