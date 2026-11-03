@@ -1,0 +1,60 @@
+name: Clang C/C++ Build & Code Coverage
+
+on:
+  push:
+    branches: [ "main", "test" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-coverage:
+    runs-on: [self-hosted, Linux, X64, qwen3-coder]
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    # - name: Install Clang and LLVM Tools
+    #   run: |
+    #     sudo apt-get update
+    #     sudo apt-get install -y clang llvm
+
+    - name: Compile Code with Coverage Instrumentation
+      run: |
+        # Create a build directory
+        mkdir -p build
+
+        # Compile all C/C++ files.
+        # -fprofile-instr-generate: Instruments the binary to gather profile data
+        # -fcoverage-mapping: Embeds the coverage mapping data in the executable
+        clang++ -O0 -g -fprofile-instr-generate -fcoverage-mapping \
+          src/*.cpp -o build/my_test_executable
+
+    - name: Run Instrumented Executable
+      env:
+        # LLVM_PROFILE_FILE controls where the raw profile data is saved
+        LLVM_PROFILE_FILE: "build/code-%p.profraw"
+      run: |
+        # Execute the program/unit tests to generate .profraw files
+        ./build/my_test_executable
+
+    - name: Merge Raw Profile Data
+      run: |
+        # LLVM requires merging the raw profile data into an indexed format before reporting
+        llvm-profdata merge -sparse build/code-*.profraw -o build/code.profdata
+
+    - name: Generate Coverage Reports
+      run: |
+        # Display the text summary in the console
+        echo "=== COVERAGE SUMMARY ==="
+        llvm-cov report ./build/my_test_executable -instr-profile=build/code.profdata
+
+        # Generate a detailed HTML report for export
+        llvm-cov show ./build/my_test_executable -instr-profile=build/code.profdata \
+          -format=html -output-dir=build/coverage_html
+
+    - name: Upload Coverage HTML Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: clang-coverage-html
+        path: build/coverage_html/
