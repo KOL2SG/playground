@@ -2,9 +2,9 @@ name: Clang C++23 Individual File Build & Coverage
 
 on:
   push:
-    branches: [ "main", "develop" ]
+    branches: [ "main", "test" ]
   pull_request:
-    branches: [ "main", "develop" ]
+    branches: [ "main" ]
 
 jobs:
   build-and-coverage:
