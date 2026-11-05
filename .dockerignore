@@ -1,0 +1,16 @@
+# Block everything except what's needed for the fuzzer compilation
+**/.git/
+**/.github/
+**/node_modules/
+**/build/
+**/venv/
+**/actions-runner
+
+# If you have a local data or database folder, block it!
+**/data/
+**/db/
+**/corpus/
+**/artifacts/
+**/*.tar.gz
+**/*.zip
+**/*.iso

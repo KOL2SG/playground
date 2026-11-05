@@ -1,9 +1,6 @@
 #include <algorithm>
-#include <bitset>
-#include <chrono>
-#include <iostream>
 #include <set>
-#include <array>
+#include <vector>
 
 class Solution {
 public:
@@ -48,27 +45,23 @@ public:
             std::vector<int> place(size,0);
             unsigned int count = 1, max_count = 1;
 
-
             return max_count;
         }
 };
 
-int main() {
-    std::vector<int> nums = {2,20,4,10,3,4,5};
-    std::vector<int> nums2 = {0,3,2,5,4,6,1,1};
-    std::vector<int> nums3 = {9,1,-3,2,4,8,3,-1,6,-2,-4,7};
-    std::vector<int> nums4 = {9,1,4,7,3,-1,0,5,8,-1,6};
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
+// 1. Calculate how many integers we can extract from the fuzzed bytes
+    size_t num_elements = Size / sizeof(int);
+    if (num_elements == 0) {
+        return 0;
+    }
 
-    Solution s;
-    auto start = std::chrono::high_resolution_clock::now();
-    std::cout << s.longestConsecutive(nums4) << std::endl;
-    auto end = std::chrono::high_resolution_clock::now();
-    auto duration_us = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
-    std::cout << "Algorithm took: " << duration_us.count() << " us" << std::endl;
+    // 2. Safely cast the raw pointer and populate the vector
+    const int* int_data = reinterpret_cast<const int*>(Data);
+    std::vector<int> vec(int_data, int_data + num_elements);
 
-    auto start1 = std::chrono::high_resolution_clock::now();
-    std::cout << s.longestConsecutive2(nums4) << std::endl;
-    auto end1 = std::chrono::high_resolution_clock::now();
-    auto duration_us1 = std::chrono::duration_cast<std::chrono::nanoseconds>(end1 - start1);
-    std::cout << "Algorithm took: " << duration_us.count() << " us" << std::endl;
+  Solution sol;
+  sol.longestConsecutive(vec);
+  // sol.longestConsecutive2(vec);
+  return 0;
 }
