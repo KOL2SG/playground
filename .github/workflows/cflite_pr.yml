@@ -20,6 +20,10 @@ jobs:
         - undefined
         - memory
     steps:
+    - name: Clear specific path
+      uses: AutoModality/action-clean@v1
+      with:
+        path: out/artifacts
     - name: Build Fuzzers (${{ matrix.sanitizer }})
       id: build
       uses: google/clusterfuzzlite/actions/build_fuzzers@v1
