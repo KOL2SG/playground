@@ -10,6 +10,8 @@ public:
         unsigned int count = 1, max_count = 1;
         std::set<int> s(nums.begin(), nums.end());
         for (auto&& n : s)  {
+            if ((n+1) > std::numeric_limits<int>::max())
+                continue;
             if (s.contains(n+1)) {
                 count++;
             }
@@ -61,7 +63,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
     std::vector<int> vec(int_data, int_data + num_elements);
 
     Solution sol;
-    // sol.longestConsecutive(vec);
-    sol.longestConsecutive2(vec);
+    sol.longestConsecutive(vec);
+    // sol.longestConsecutive2(vec);
     return 0;
 }
