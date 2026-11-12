@@ -10,7 +10,7 @@ public:
         unsigned int count = 1, max_count = 1;
         std::set<int> s(nums.begin(), nums.end());
         for (auto&& n : s)  {
-            if ((n+1) > std::numeric_limits<int>::max())
+            if (n == std::numeric_limits<int>::max())
                 continue;
             if (s.contains(n+1)) {
                 count++;
