@@ -13,6 +13,11 @@ jobs:
   review:
     runs-on: [self-hosted, Linux, X64, qwen3-coder]  # label your self-hosted runner accordingly
     steps:
+      - name: Clear specific path
+        uses: AutoModality/action-clean@v1
+        with:
+          path: playground
+
       - name: Checkout PR
         uses: actions/checkout@v6
         with:
