@@ -60,8 +60,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
     const int* int_data = reinterpret_cast<const int*>(Data);
     std::vector<int> vec(int_data, int_data + num_elements);
 
-  Solution sol;
-  sol.longestConsecutive(vec);
-  // sol.longestConsecutive2(vec);
-  return 0;
+    Solution sol;
+    sol.longestConsecutive(vec);
+    // sol.longestConsecutive2(vec);
+    return 0;
 }
