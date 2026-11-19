@@ -152,8 +152,17 @@ def call_ollama(messages):
         data=json.dumps(payload).encode(),
         headers={"Content-Type": "application/json", "Accept": "application/json"},
     )
-    with urllib.request.urlopen(req, timeout=300) as resp:
-        return json.loads(resp.read().decode())["message"]["content"]
+    # with urllib.request.urlopen(req, timeout=300) as resp:
+    #     return json.loads(resp.read().decode())["message"]["content"]
+
+    try:
+        with urllib.request.urlopen(req, timeout=300) as resp:
+            return json.loads(resp.read().decode())["message"]["content"]
+    except urllib.error.HTTPError as e:
+        body = e.read().decode(errors="replace")
+        print(f"Ollama 400: {e.code}", file=sys.stderr)
+        print(f"Response body: {body}", file=sys.stderr)
+        raise
 
 
 def read_compile_status():
