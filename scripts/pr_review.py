@@ -198,8 +198,11 @@ def main():
     diff = "\n".join(diff_parts)
 
     # Keep the prompt bounded (Ollama token window varies by model).
-    if len(diff) > 150000:
-        diff = diff[:150000] + "\n[... diff truncated for brevity ...]"
+    # if len(diff) > 150000:
+    #     diff = diff[:150000] + "\n[... diff truncated for brevity ...]"
+
+    if len(diff) > 5000:
+        diff = diff[:5000] + "\n[... diff truncated for brevity ...]"
 
     prompt = USER_PROMPT.format(file_patches=diff, status=status).encode("utf-8", "ignore")
 
