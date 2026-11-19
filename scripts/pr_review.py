@@ -18,7 +18,7 @@ import sys
 import urllib.request
 import urllib.error
 
-OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434/api/generate")
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434/v1")
 MODEL_ID = os.environ.get("MODEL_ID", "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_M")
 TOKEN = os.environ.get("GITHUB_TOKEN", "")
 REPO = os.environ.get("GITHUB_REPOSITORY", "")
@@ -150,7 +150,7 @@ def call_ollama(messages):
         headers={"Content-Type": "application/json", "Accept": "application/json"},
     )
     with urllib.request.urlopen(req, timeout=300) as resp:
-        return json.loads(resp.read().decode())
+        return json.loads(resp.read().decode())["messages"]["content"]
 
 
 def read_compile_status():
