@@ -28,7 +28,7 @@ STATUS_FILE = os.path.join(
 )
 EMAIL = os.environ.get("GITHUB_ACTOR", "review-bot")
 
-SYSTEM_PROMPT = """You are a senior C/C++ engineer reviewing a pull request.
+SYSTEM_PROMPT = """You are a senior engineer reviewing a pull request.
 Apply these rules strictly and be concrete:
 
 RULES:
@@ -92,8 +92,13 @@ def gh_get(path):
                  "Accept": "application/vnd.github+json",
                  "X-GitHub-Api-Version": "2022-11-28"},
     )
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        return json.loads(resp.read().decode())
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            return json.loads(resp.read().decode())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode(errors="replace") if e.fp else ""
+        print(f"GitHub API error {e.code} for {path}: {body}", file=sys.stderr)
+        raise
 
 
 def gh_post(path, payload):
@@ -106,8 +111,13 @@ def gh_post(path, payload):
                  "X-GitHub-Api-Version": "2022-11-28"},
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        return json.loads(resp.read().decode())
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            return json.loads(resp.read().decode())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode(errors="replace") if e.fp else ""
+        print(f"GitHub API error {e.code} for {path}: {body}", file=sys.stderr)
+        raise
 
 
 def fetch_pr_files(num):
@@ -163,19 +173,17 @@ def main():
     print(f"PR #{pr_num} | compile gate: {status}", flush=True)
 
     # Re-fetch the full repo context at the PR head for the diff.
-    pr_title = ""  # bound before the try so it is never unbound
-    try:
-        files = gh_get(f"/pulls/{pr_num}/files")["files"]
-        pr_title = (gh_get(f"/pulls/{pr_num}").get("title") or "").strip()
-        diff = "\n".join(
-            f"### {f.get('filename')} (+{f.get('additions')} / -{f.get('deletions')})"
-            + ("\n" + f.get("patch") if f.get("patch") else "")
-            for f in files
-            if f.get("patch") or True
-        )
-    except Exception as e:
-        print(f"warning: could not fetch PR diff: {e}", file=sys.stderr)
-        diff = "(could not fetch diff - proceed with PR title only)"
+    pr = gh_get(f"/pulls/{pr_num}")  # PR object: title + head.sha
+    pr_title = (pr.get("title") or "").strip()
+    head_sha = (pr.get("head") or {}).get("sha") or ""
+
+    file_list = gh_get(f"/pulls/{pr_num}/files")  # list of file objects
+    diff_parts = []
+    for f in file_list:
+        diff_parts.append(f"### {f.get('filename')} (+{f.get('additions')} / -{f.get('deletions')})")
+        if f.get("patch"):
+            diff_parts.append("\n" + f.get("patch"))
+    diff = "\n".join(diff_parts)
 
     # Keep the prompt bounded (Ollama token window varies by model).
     if len(diff) > 150000:
@@ -190,7 +198,7 @@ def main():
     review = call_ollama(messages)
 
     report = (
-        f"# PR Review: {pr_title}\n\n"
+        f"# C/C++ PR Review: {pr_title}\n\n"
         f"- **PR**: #{pr_num} ({REPO})\n"
         f"- **Model**: {MODEL_ID}\n"
         f"- **Build gate**: {status}\n\n"
@@ -201,7 +209,7 @@ def main():
     try:
         gh_post(
             f"/pulls/{pr_num}/reviews",
-            {"body": report, "event": "COMMENT", "commit_id": None},
+            {"body": report, "event": "COMMENT", "commit_id": head_sha},
         )
         print("Review posted to PR #%s." % pr_num)
     except Exception as e:
