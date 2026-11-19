@@ -18,7 +18,7 @@ import sys
 import urllib.request
 import urllib.error
 
-OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434/v1")
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 MODEL_ID = os.environ.get("MODEL_ID", "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_M")
 TOKEN = os.environ.get("GITHUB_TOKEN", "")
 REPO = os.environ.get("GITHUB_REPOSITORY", "")
@@ -28,7 +28,7 @@ STATUS_FILE = os.path.join(
 )
 EMAIL = os.environ.get("GITHUB_ACTOR", "review-bot")
 
-SYSTEM_PROMPT = """You are a senior engineer reviewing a pull request.
+SYSTEM_PROMPT = """You are a senior C/C++ engineer reviewing a pull request.
 Apply these rules strictly and be concrete:
 
 RULES:
@@ -54,7 +54,7 @@ Return results as Markdown with:
 
 Be concise but give the concrete fix, not just a description."""
 
-USER_PROMPT = """Review the git diff below.
+USER_PROMPT = """Review the C/C++ diff below.
 
 ### PR summary
 (if this event carries a PR title/description, include it)
@@ -137,12 +137,15 @@ def fetch_pr_files(num):
 
 
 def call_ollama(messages):
-    url = f"{OLLAMA_URL}"
+    url = f"{OLLAMA_URL}/api/chat"
     payload = {
         "model": MODEL_ID,
         "messages": messages,
-        "temperature": 0.2,
-        "max_tokens": 2000,
+        "stream": False,
+        "options": {
+            "temperature": 0.2,
+            "num_predict": 2000,
+        },
     }
     req = urllib.request.Request(
         url,
@@ -150,7 +153,7 @@ def call_ollama(messages):
         headers={"Content-Type": "application/json", "Accept": "application/json"},
     )
     with urllib.request.urlopen(req, timeout=300) as resp:
-        return json.loads(resp.read().decode())["messages"]["content"]
+        return json.loads(resp.read().decode())["message"]["content"]
 
 
 def read_compile_status():
