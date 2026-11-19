@@ -18,7 +18,7 @@ import sys
 import urllib.request
 import urllib.error
 
-OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434/v1")
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434/api/generate")
 MODEL_ID = os.environ.get("MODEL_ID", "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_M")
 TOKEN = os.environ.get("GITHUB_TOKEN", "")
 REPO = os.environ.get("GITHUB_REPOSITORY", "")
