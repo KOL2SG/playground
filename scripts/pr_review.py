@@ -163,6 +163,7 @@ def main():
     print(f"PR #{pr_num} | compile gate: {status}", flush=True)
 
     # Re-fetch the full repo context at the PR head for the diff.
+    pr_title = ""  # bound before the try so it is never unbound
     try:
         files = gh_get(f"/pulls/{pr_num}/files")["files"]
         pr_title = (gh_get(f"/pulls/{pr_num}").get("title") or "").strip()
