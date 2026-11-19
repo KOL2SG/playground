@@ -150,7 +150,7 @@ def call_ollama(messages):
         headers={"Content-Type": "application/json", "Accept": "application/json"},
     )
     with urllib.request.urlopen(req, timeout=300) as resp:
-        return json.loads(resp.read().decode())[0]["message"]["content"]
+        return json.loads(resp.read().decode())["message"]["content"]
 
 
 def read_compile_status():
