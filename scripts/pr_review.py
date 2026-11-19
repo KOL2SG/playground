@@ -144,7 +144,7 @@ def call_ollama(messages):
         "stream": False,
         "options": {
             "temperature": 0.2,
-            "num_predict": 500,
+            "num_predict": 1000,
         },
     }
     req = urllib.request.Request(
@@ -211,6 +211,7 @@ def main():
 
     print("Sending review request to local model...", flush=True)
     review = call_ollama(messages)
+    print(f"DEBUG: call_ollama returned: {repr(review[:200])}", flush=True)
 
     report = (
         f"# C/C++ PR Review: {pr_title}\n\n"
