@@ -137,7 +137,7 @@ def fetch_pr_files(num):
 
 
 def call_ollama(messages):
-    url = f"{OLLAMA_URL}/chat/completions"
+    url = f"{OLLAMA_URL}"
     payload = {
         "model": MODEL_ID,
         "messages": messages,
