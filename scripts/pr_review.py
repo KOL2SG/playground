@@ -144,7 +144,7 @@ def call_ollama(messages):
         "stream": False,
         "options": {
             "temperature": 0.2,
-            "num_predict": 2000,
+            "num_predict": 500,
         },
     }
     req = urllib.request.Request(
@@ -156,7 +156,7 @@ def call_ollama(messages):
     #     return json.loads(resp.read().decode())["message"]["content"]
 
     try:
-        with urllib.request.urlopen(req, timeout=300) as resp:
+        with urllib.request.urlopen(req, timeout=900) as resp:
             return json.loads(resp.read().decode())["message"]["content"]
     except urllib.error.HTTPError as e:
         body = e.read().decode(errors="replace")
