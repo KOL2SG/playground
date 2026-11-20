@@ -1,0 +1,65 @@
+name: PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+env:
+  MODEL_ID: hf.co/unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_M
+  OLLAMA_URL: http://localhost:11434
+
+jobs:
+  review:
+    runs-on: [self-hosted, Linux, X64, qwen3-coder]
+
+    steps:
+      - name: Clear specific path
+        uses: AutoModality/action-clean@v1
+        with:
+          path: playground
+
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Wait for local Ollama model server
+        run: |
+          for i in $(seq 1 12); do
+            if curl -s --max-time 2 http://localhost:11434/v1/models >/dev/null 2>&1; then
+              echo "Ollama is running"
+              break
+            fi
+            echo "Ollama not up yet (try $i)"
+            sleep 5
+          done
+
+      # - name: Compile + sanitizers (hard gate, non-fatal)
+      #   run: |
+      #     mkdir -p build
+      #     STATUS=PASS
+      #     if [ -f CMakeLists.txt ]; then
+      #       cmake -S . -B build \
+      #         -DCMAKE_C_FLAGS="-Wall -Wextra -Wpedantic -Werror -fsanitize=address,undefined" \
+      #         -DCMAKE_CXX_FLAGS="-Wall -Wextra -Wpedantic -Werror -fsanitize=address,undefined" \
+      #         > build/cmake.log 2>&1
+      #       cmake --build build -- -j"$(nproc)" > build/build.log 2>&1 || STATUS=FAIL
+      #     elif [ -f Makefile ]; then
+      #       make -j"$(nproc)" > build/build.log 2>&1 || STATUS=FAIL
+      #     else
+      #       echo "no known build file; compile gate skipped" >> build/build.log
+      #     fi
+      #     echo "$STATUS" > build/status.txt
+      #     echo "compile gate: $STATUS"
+      #     tail -30 build/build.log
+
+      - name: Local LLM code review + post to PR
+        run: python3 scripts/pr_review.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
