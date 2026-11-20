@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Run the local LLM code review on the self-hosted GitHub runner.
 
@@ -232,10 +231,20 @@ def main():
             f"/pulls/{pr_num}/reviews",
             {"body": report, "event": "COMMENT", "commit_id": head_sha},
         )
-        print("Review posted to PR #%s." % pr_num)
-    except Exception as e:
-        print("ERROR posting review: %s" % e, file=sys.stderr)
+        print(f"Review posted to PR #{pr_num}.")
+    except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
+        print(f"ERROR posting review: {e}", file=sys.stderr)
         sys.exit(1)
+
+    # try:
+    #     gh_post(
+    #         f"/pulls/{pr_num}/reviews",
+    #         {"body": report, "event": "COMMENT", "commit_id": head_sha},
+    #     )
+    #     print(f"Review posted to PR #{pr_num}.")
+    # except Exception as e:
+    #     print(f"ERROR posting review: {e}", file=sys.stderr)
+    #     sys.exit(1)
 
     # Print the review to the job log too.
     print("=" * 20, "REVIEW", "=" * 20)
