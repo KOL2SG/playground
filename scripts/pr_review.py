@@ -28,23 +28,8 @@ STATUS_FILE = os.path.join(
 )
 EMAIL = os.environ.get("GITHUB_ACTOR", "review-bot")
 
-SYSTEM_PROMPT = """You are a senior C/C++ engineer reviewing a pull request.
-Apply these rules strictly and be concrete:
-
-RULES:
-- NO raw SQL; only SQLAlchemy ORM.
-- Every FastAPI endpoint must have type annotations and Pydantic models.
-- NO `any` types in TypeScript/React. All components must have props interfaces.
-- Fetch data with React Query; NEVER use useEffect for API calls.
-- No raw owning pointers; use RAII and smart pointers
-  (std::unique_ptr, std::shared_ptr, std::weak_ptr).
-- No manual new/delete; never double-free or leak.
-- Bounds-safe containers/algorithms; no strcpy/sprintf family without bounds checks.
-- Error handling: C uses error codes + goto cleanup; C++ uses exceptions consistently.
-- Type safety: enum class, nullptr, std::optional, constexpr; no #define constants.
-- Compiler warnings as errors: -Wall -Wextra -Wpedantic -Werror.
-- Sanitizers (ASan/UBSan/LSan/TSan) in every CI build.
-- Avoid undefined behaviour, dangling references, and vector-reallocation bugs.
+SYSTEM_PROMPT = """You are a senior engineer reviewing a pull request.
+Read the Draugr reports at directory draugr-out.
 
 Return results as Markdown with:
 1. A short verdict (solid / ok with minor issues / fixes needed).
@@ -54,7 +39,7 @@ Return results as Markdown with:
 
 Be concise but give the concrete fix, not just a description."""
 
-USER_PROMPT = """Review the C/C++ diff below.
+USER_PROMPT = """Review the diff below.
 
 ### PR summary
 (if this event carries a PR title/description, include it)
@@ -69,6 +54,25 @@ Return your review as Markdown. Be concise but give the concrete fix for each fi
 
 
 # ---------------------------------------------------------------- helpers
+
+def add_rules():
+    ADDITIONAL_RULES = """RULES:
+    - NO raw SQL; only SQLAlchemy ORM.
+    - Every FastAPI endpoint must have type annotations and Pydantic models.
+    - NO `any` types in TypeScript/React. All components must have props interfaces.
+    - Fetch data with React Query; NEVER use useEffect for API calls.
+    - No raw owning pointers; use RAII and smart pointers
+      (std::unique_ptr, std::shared_ptr, std::weak_ptr).
+    - No manual new/delete; never double-free or leak.
+    - Bounds-safe containers/algorithms; no strcpy/sprintf family without bounds checks.
+    - Error handling: C uses error codes + goto cleanup; C++ uses exceptions consistently.
+    - Type safety: enum class, nullptr, std::optional, constexpr; no #define constants.
+    - Compiler warnings as errors: -Wall -Wextra -Wpedantic -Werror.
+    - Sanitizers (ASan/UBSan/LSan/TSan) in every CI build.
+    - Avoid undefined behaviour, dangling references, and vector-reallocation bugs.
+    """
+    return ADDITIONAL_RULES
+
 
 def get_pr_number():
     try:
@@ -144,7 +148,7 @@ def call_ollama(messages):
         "stream": False,
         "options": {
             "temperature": 0.2,
-            "num_predict": 1000,
+            "num_predict": 2000,
         },
     }
     req = urllib.request.Request(
@@ -201,8 +205,8 @@ def main():
     # if len(diff) > 150000:
     #     diff = diff[:150000] + "\n[... diff truncated for brevity ...]"
 
-    if len(diff) > 5000:
-        diff = diff[:5000] + "\n[... diff truncated for brevity ...]"
+    if len(diff) > 12000:
+        diff = diff[:12000] + "\n[... diff truncated for brevity ...]"
 
     prompt = USER_PROMPT.format(file_patches=diff, status=status).encode("utf-8", "ignore")
 
@@ -210,8 +214,9 @@ def main():
                 {"role": "user", "content": prompt.decode("utf-8", "ignore")}]
 
     print("Sending review request to local model...", flush=True)
+
+    print("DEBUG: about to call call_ollama", flush=True)
     review = call_ollama(messages)
-    print(f"DEBUG: call_ollama returned: {repr(review[:200])}", flush=True)
 
     report = (
         f"# C/C++ PR Review: {pr_title}\n\n"
