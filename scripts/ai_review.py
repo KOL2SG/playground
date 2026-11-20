@@ -3,16 +3,21 @@ import os
 import urllib.request
 
 OLLAMA_URL = os.environ["OLLAMA_URL"]  # e.g. http://10.20.0.15:11434/api/generate
-MODEL = os.environ.get("OLLAMA_MODEL", "qwen3-coder:30b")
+MODEL = os.environ.get("OLLAMA_MODEL", "hf.co/unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_M")
 # MODEL = os.environ.get("OLLAMA_MODEL", "beam:cloud")
 GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
 REPO = os.environ["GITHUB_REPOSITORY"]
 PR_NUMBER = os.environ["PR_NUMBER"]
 
 REVIEW_PROMPT = """You are an elite code reviewer. Review the following diff.
-Respond with a short bullet list covering: likely bugs, missing tests,
-and style issues. Be specific and reference file names and line numbers
-where possible. Keep the review under 300 words.
+
+Return results as Markdown with:
+1. A short verdict (solid / ok with minor issues / fixes needed).
+2. A findings table: File | Line | Severity (Critical/Warning/Nit) | Fix.
+3. A "High-risk" list (memory corruption, UB, crash, data race, leak).
+4. Passing checks (compile gate, sanitizers, formatting).
+
+Be concise but give the concrete fix, not just a description.
 
 DIFF:
 {diff}
