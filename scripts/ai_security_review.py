@@ -9,16 +9,10 @@ GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
 REPO = os.environ["GITHUB_REPOSITORY"]
 PR_NUMBER = os.environ["PR_NUMBER"]
 
-REVIEW_PROMPT = """You are a senior engineer reviewing a pull request.
-Read the Draugr reports at directory draugr-out.
-
-Return results as Markdown with:
-1. A short verdict (solid / ok with minor issues / fixes needed).
-2. A findings table: File | Line | Severity (Critical/Warning/Nit) | Fix.
-3. A "High-risk" list (memory corruption, UB, crash, data race, leak).
-4. Passing checks (compile gate, sanitizers, formatting).
-
-Be concise but give the concrete fix, not just a description.
+REVIEW_PROMPT = """You are an elite code reviewer. Review the following dragur report.
+Respond starting with a table of found issues (organised in coloumn like Issue, Severity,
+Description, File:Line, Recommendation), how it matters, suggestions to fix if any.
+Be specific and reference file names and line numbers where possible.
 
 ```json
 {data_report}
