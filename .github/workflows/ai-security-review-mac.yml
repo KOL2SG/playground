@@ -1,0 +1,36 @@
+name: AI Security Review (Self-Hosted Ollama)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read          # Needed to download/read the code changes
+  pull-requests: write    # Needed so the runner can post inline comments on the PR [source: 9]
+  issues: write           # Backup permission required by some comment actions [source: 9]
+
+jobs:
+  security_review:
+    runs-on: [self-hosted, macOS, ARM64]  # label your self-hosted runner accordingly
+    steps:
+      - name: Clear specific path
+        uses: AutoModality/action-clean@v1
+        with:
+          path: playground
+
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - run: draugr scan draugr.saga.yaml -o draugr-out # Runs on local self-hosted runner
+        continue-on-error: true  # <--- Forces the workflow to keep going
+
+      - name: Run Ollama-backed security review
+        env:
+          OLLAMA_URL: http://127.0.0.1:11434/api/generate
+          OLLAMA_MODEL: qwen3.8:27b-mlx
+          # OLLAMA_MODEL: beam:cloud
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: python3 scripts/ai_security_review.py
