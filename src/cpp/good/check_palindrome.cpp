@@ -50,7 +50,7 @@ bool isPalindrome(Node* &list) {
 }
 
 int main() {
-    std::vector<char> vectorStrList = {'a','b', 'f', 'a', 'b','a'};
+    std::vector<char> vectorStrList = {'a','b', 'f', 'f', 'b', 'a'};
     Node* linkList = buildList(vectorStrList);
     bool result = isPalindrome(linkList);
     std::cout << (result ? "Palindrome" : "Not Palindrome") << std::endl;
