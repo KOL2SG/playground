@@ -49,6 +49,8 @@ jobs:
 
           # 1. Compile the file into its own standalone executable
           clang++ -O0 -g -fprofile-instr-generate -fcoverage-mapping \
+            -fsanitize=fuzzer,address \
+            -fsanitize-coverage=inline-8bit,edge,trace-cmp \
             "$filepath" -o "build/binaries/${basename}_exec"
 
           # 2. Run the specific binary to capture run-time coverage profiling
