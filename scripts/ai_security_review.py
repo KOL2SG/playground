@@ -32,7 +32,7 @@ def call_ollama(draugr_report):
         "stream": False,
     }).encode("utf-8")
     req = urllib.request.Request(OLLAMA_URL, data=payload, headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=120) as resp:
+    with urllib.request.urlopen(req, timeout=600) as resp:
         body = json.loads(resp.read())
     return body["response"]
 
