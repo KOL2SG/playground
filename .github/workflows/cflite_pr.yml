@@ -21,7 +21,7 @@ jobs:
         - memory
     steps:
     - name: Clear specific path
-      uses: KOL2SG/action-clean@main
+      uses: KOL2SG/action-clean@master
       with:
         path: out/artifacts
     - name: Build Fuzzers (${{ matrix.sanitizer }})
