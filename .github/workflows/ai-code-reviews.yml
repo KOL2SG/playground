@@ -14,7 +14,7 @@ jobs:
     runs-on: [self-hosted, Linux, X64, qwen3-coder]  # label your self-hosted runner accordingly
     steps:
       - name: Clear specific path
-        uses: AutoModality/action-clean@v1
+        uses: KOL2SG/action-clean@main
         with:
           path: playground
 

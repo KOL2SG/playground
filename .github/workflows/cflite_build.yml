@@ -21,12 +21,13 @@ jobs:
         - memory
    steps:
     - name: Clear specific path
-      uses: AutoModality/action-clean@v1
+      uses: KOL2SG/action-clean@main
       with:
         path: out/artifacts
+
     - name: Build Fuzzers (${{ matrix.sanitizer }})
       id: build
-      uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+      uses: KOL2SG/clusterfuzzlite/actions/build_fuzzers@main
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         language: c++ # Change this to the language you are fuzzing.

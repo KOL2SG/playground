@@ -12,7 +12,7 @@ jobs:
 
     steps:
     - name: Clear specific path
-      uses: AutoModality/action-clean@v1
+      uses: KOL2SG/action-clean@main
       with:
         path: playground
 
