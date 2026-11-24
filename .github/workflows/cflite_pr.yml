@@ -1,4 +1,5 @@
 name: ClusterFuzzLite PR fuzzing
+# ClusterFuzzLite PR fuzzing. Single unified libFuzzer harness under src/cpp/fuzz_targets/all_targets_fuzz.cpp (selector-byte dispatcher). Action builds and runs one binary: $OUT/all_targets.
 on:
   pull_request:
     paths:

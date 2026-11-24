@@ -1,4 +1,5 @@
 name: ClusterFuzzLite cron tasks
+# ClusterFuzzLite cron: prune + coverage. Single unified libFuzzer harness under src/cpp/fuzz_targets/all_targets_fuzz.cpp (selector-byte dispatcher) is the fuzz target $OUT/all_targets.
 on:
   schedule:
     - cron: '0 0 * * *'  # Once a day at midnight.

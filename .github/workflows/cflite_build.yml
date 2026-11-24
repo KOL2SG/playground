@@ -1,4 +1,5 @@
 name: ClusterFuzzLite continuous builds
+# ClusterFuzzLite build. Single unified libFuzzer harness under src/cpp/fuzz_targets/all_targets_fuzz.cpp (selector-byte dispatcher). Action builds one binary: $OUT/all_targets.
 on:
   push:
     branches:

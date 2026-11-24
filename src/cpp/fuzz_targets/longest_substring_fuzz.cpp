@@ -3,7 +3,7 @@
 #include <cstring>
 #include <vector>
 #include <string>
-#include "fuzz_util.h"
+#include "fuzz_util.hpp"
 
 // Algorithm engine (main and libfuzzer entry stripped for this target).
 #include "longest_substring_engine.cpp"
