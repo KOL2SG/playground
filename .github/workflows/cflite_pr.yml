@@ -25,6 +25,14 @@ jobs:
       uses: KOL2SG/action-clean@master
       with:
         path: out/artifacts
+    - name: Fetch PR merge ref
+      # Give the ClusterFuzzLite script a local ref it can git-checkout
+      # even if the runner did not pre-fetch the PR merge commit.
+      run: |
+        git fetch --depth=1 origin +refs/pull/${{ github.event.pull_request.number }}/head:refs/remotes/origin/pr_head
+        git fetch origin +refs/pull/${{ github.event.pull_request.number }}/merge:refs/remotes/pull/${{ github.event.pull_request.number }}/merge
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Build Fuzzers (${{ matrix.sanitizer }})
       id: build
       uses: KOL2SG/clusterfuzzlite/actions/build_fuzzers@main
