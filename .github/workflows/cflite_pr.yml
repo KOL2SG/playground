@@ -64,8 +64,10 @@ jobs:
       if: always()
       uses: KOL2SG/codeql-action/upload-sarif@main
       with:
-        # ClusterFuzzLite writes the SARIF next to the repo root; the glob
-        # picks it up regardless of the subdirectory it lands in.
-        sarif_file: 'cifuzz-sarif/results.sarif'
+        # ClusterFuzzLite on the self-hosted runner writes its SARIF under
+        # the runner's _review output (outside the repo root), so point the
+        # upload at the real file. Adjust the 'actions-runner/_review/...'
+        # prefix to match your runner's review checkout layout if it differs.
+        sarif_file: 'actions-runner/_review/playground/playground/cifuzz-sarif/results.sarif'
         # Category separates this analysis from other code-scanning uploads.
         category: clusterfuzzlite-pr
