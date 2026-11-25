@@ -16,6 +16,7 @@ Return results as Markdown with:
 2. A findings table: File | Line | Severity (Critical/Warning/Nit) | Fix.
 3. A "High-risk" list (memory corruption, UB, crash, data race, leak).
 4. Passing checks (compile gate, sanitizers, formatting).
+5. Ignore the Openspec diff.
 
 Be concise but give the concrete fix, not just a description.
 
