@@ -1,0 +1,33 @@
+name: ClusterFuzzLite Go fuzzing
+# ClusterFuzzLite Go fuzzing. Go uses the native fuzzer
+# (`go test -fuzz`), not libFuzzer/clusterfuzzlite. Fuzz targets live in
+# src/GO/: FuzzHasDuplicate, FuzzIsAnagram, FuzzGroupAnagrams,
+# FuzzTwoSum, FuzzCheckAnagram (seed corpora in src/GO/fuzz/).
+on:
+  pull_request:
+    paths:
+      - 'src/GO/**'
+permissions: read-all
+jobs:
+  fuzz-go:
+    # On-self-hosted, this runs in parallel with the C++ clusterfuzzlite
+    # workflows (cflite_pr.yml / cflite_build.yml).
+    runs-on: [self-hosted, Linux, X64, qwen3-coder]
+    concurrency:
+      group: go-fuzz-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Go version
+        run: go version
+      - name: Go fuzz targets
+        run: |
+          cd src/GO
+          set -x
+          for t in FuzzHasDuplicate FuzzIsAnagram FuzzGroupAnagrams FuzzTwoSum FuzzCheckAnagram; do
+            echo "== $t =="
+            go test -fuzz=$t -fuzztime=120s -timeout=180s . || echo "::warning:: $t failed"
+          done
