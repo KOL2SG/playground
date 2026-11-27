@@ -21,6 +21,10 @@ jobs:
       group: go-fuzz-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
     steps:
+      - name: Clear specific path
+        uses: KOL2SG/action-clean@master
+        with:
+          path: playground
       - name: Checkout
         uses: KOL2SG/checkout@main
         with:

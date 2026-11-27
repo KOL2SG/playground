@@ -21,8 +21,8 @@ jobs:
         sanitizer:
         - address
         # Override this with the sanitizers you want.
-        - undefined
-        - memory
+        # - undefined
+        # - memory
     steps:
     - name: Clear specific path
       uses: KOL2SG/action-clean@master

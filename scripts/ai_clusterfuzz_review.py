@@ -11,8 +11,8 @@ PR_NUMBER = os.environ["PR_NUMBER"]
 
 REVIEW_PROMPT = """You are an elite code reviewer. Review the following clusterfuzz sarif report.
 Respond starting with a table of found issues (organised in coloumn
-Description, File:Line, Recommendation), how it matters, suggestions to fix if any.
-Be specific and reference file names and line numbers.
+Description, File:Line, Recommendation), how it matters, suggestions to fix for the referenced file line only,
+not based on its input. Be specific and reference file names and line numbers.
 
 ```json
 {data_report}
