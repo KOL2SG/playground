@@ -5,6 +5,7 @@ name: ClusterFuzzLite Go fuzzing
 # FuzzTwoSum, FuzzCheckAnagram (seed corpora in src/GO/fuzz/).
 on:
   pull_request:
+    types: [opened, synchronize, reopened]
     paths:
       - 'src/GO/**'
 permissions: read-all
