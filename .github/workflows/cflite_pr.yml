@@ -36,10 +36,10 @@ jobs:
         git fetch origin +refs/pull/${{ github.event.pull_request.number }}/merge:refs/remotes/pull/${{ github.event.pull_request.number }}/merge
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Checkout PR
-      uses: KOL2SG/checkout@main
-      with:
-        fetch-depth: 0
+    # - name: Checkout PR
+    #   uses: KOL2SG/checkout@main
+    #   with:
+    #     fetch-depth: 0
     - name: Build Fuzzers (${{ matrix.sanitizer }})
       id: build
       uses: KOL2SG/clusterfuzzlite/actions/build_fuzzers@main
@@ -67,15 +67,15 @@ jobs:
         # See later section on "Git repo for storage".
         # storage-repo: https://${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/OWNER/STORAGE-REPO-NAME.git
         # storage-repo-branch: main   # Optional. Defaults to "main"
-    - name: Run Ollama-backed review
-      if: always()
-      env:
-        OLLAMA_URL: http://127.0.0.1:11434/api/generate
-        OLLAMA_MODEL: qwen3.8:latest
-        # OLLAMA_MODEL: beam:cloud
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        PR_NUMBER: ${{ github.event.pull_request.number }}
-      run: python3 scripts/ai_clusterfuzz_review.py
+    # - name: Run Ollama-backed review
+    #   if: always()
+    #   env:
+    #     OLLAMA_URL: http://127.0.0.1:11434/api/generate
+    #     OLLAMA_MODEL: qwen3.8:latest
+    #     # OLLAMA_MODEL: beam:cloud
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #     PR_NUMBER: ${{ github.event.pull_request.number }}
+    #   run: python3 scripts/ai_clusterfuzz_review.py
     - name: Upload ClusterFuzzLite SARIF to code scanning
       if: always()
       uses: KOL2SG/codeql-action/upload-sarif@main

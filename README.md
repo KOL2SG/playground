@@ -67,7 +67,7 @@ The user is experimenting with **AI to automate and optimize security reports**.
 **How it works**
 
 - Draugr produces `draugr-out/report.json` (and the SARIF). These raw outputs are large and generic.
-- The AI review scripts (`scripts/ai_review.py`, `scripts/ai_clusterfuzz_review.py`, `scripts/ai_security_review.py`) send the raw report (or a PR diff + build gate) to a self-hosted Ollama model.
+- The AI review scripts (`scripts/ai_review.py`, `scripts/ai_clusterfuzz_review.py`, `scripts/ai_security_review.py`, `scripts/ai_advsec_review.py`) send the raw report (or PR diff, fuzz SARIF, or GitHub code-scanning alerts) to a self-hosted Ollama model.
 - The model returns a structured Markdown review:
   - a short verdict (`solid` / `ok with minor issues` / `fixes needed`);
   - a findings table (`File | Line | Severity | Fix`);
