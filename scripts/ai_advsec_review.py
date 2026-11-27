@@ -48,9 +48,13 @@ Keep it short. Do NOT repeat raw JSON back.
 
 Findings:"""
 
-def fetch_code_scanning_alerts(repo: str, pr_number: str) -> dict:
-    """Fetch open code-scanning alerts for one PR's HEAD ref."""
-    ref = f"refs/pull/{pr_number}/head"
+def fetch_code_scanning_alerts(repo: str, pr_number: str) -> list:
+    """Fetch open code-scanning alerts for one PR's HEAD ref.
+
+    Returns the list of alert objects. GitHub normally answers with a JSON
+    object ``{"total": N, "alerts": [...]}``; a bare list is accepted too so
+    the caller does not depend on the exact response shape.
+    """
     ref = f"refs/pull/{pr_number}/head"
     url = (
         f"https://api.github.com/repos/{repo}/code-scanning/alerts"
@@ -58,12 +62,25 @@ def fetch_code_scanning_alerts(repo: str, pr_number: str) -> dict:
     )
     req = urllib.request.Request(url, headers=API_HEADERS)
     with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+        raw = resp.read().decode("utf-8")
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        print(f"[ai_advsec_review] GitHub API did not return JSON for {url}", file=sys.stderr)
+        print(f"[ai_advsec_review] body head: {raw[:300]!r}", file=sys.stderr)
+        return []
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict):
+        return data.get("alerts", [])
+    return []
 
 
-def format_alerts(alerts: dict, pr_number: str) -> str:
-    items = alerts.get("alerts", [])
-    total = alerts.get("total", 0)
+def format_alerts(alerts: list, pr_number: str) -> str:
+    if isinstance(alerts, dict):
+        alerts = alerts.get("alerts", [])
+    items = alerts if isinstance(alerts, list) else []
+    total = len(items)
     if not items:
         return (
             f"No open code-scanning findings for this PR (ref: refs/pull/{pr_number}/head)."
@@ -71,9 +88,11 @@ def format_alerts(alerts: dict, pr_number: str) -> str:
         )
     rows = []
     for a in items:
+        if not isinstance(a, dict):
+            continue
         rule = a.get("rule") or {}
         inst = a.get("most_recent_instance") or {}
-        loc = inst.get("location") or {}
+        loc = a.get("location") or {}
         severity = rule.get("severity") or "unknown"
         rule_id = rule.get("id") or "n/a"
         description = rule.get("description") or "n/a"
@@ -84,7 +103,7 @@ def format_alerts(alerts: dict, pr_number: str) -> str:
             f"- [{state}][{severity}] `{rule_id}`: {description} (src/{path}:{line})"
         )
     rows_text = "\n".join(rows)
-    return f"Open Advanced Security findings: **{total}**.\n\n{rows_text}"
+    return f"Open Advanced Security findings: **{total}**.{rows_text}"
 
 
 def prompt_ollama(text: str) -> str:
