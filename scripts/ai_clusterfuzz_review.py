@@ -9,10 +9,10 @@ GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
 REPO = os.environ["GITHUB_REPOSITORY"]
 PR_NUMBER = os.environ["PR_NUMBER"]
 
-REVIEW_PROMPT = """You are an elite code reviewer. Review the following clusterfuzz report.
-Respond starting with a table of found issues (organised in coloumn like Issue, Severity,
+REVIEW_PROMPT = """You are an elite code reviewer. Review the following clusterfuzz sarif report.
+Respond starting with a table of found issues (organised in coloumn
 Description, File:Line, Recommendation), how it matters, suggestions to fix if any.
-Be specific and reference file names and line numbers where possible.
+Be specific and reference file names and line numbers.
 
 ```json
 {data_report}

@@ -4,7 +4,10 @@ on:
   pull_request:
     paths:
       - '**'
-permissions: read-all
+permissions:
+  contents: read          # Needed to download/read the code changesread-all
+  pull-requests: write    # Needed so the runner can post inline comments on the PR [source: 9]
+  issues: write           # Backup permission required by some comment actions [source: 9]
 jobs:
   PR:
     # runs-on: ubuntu-latest
