@@ -10,9 +10,9 @@ REPO = os.environ["GITHUB_REPOSITORY"]
 PR_NUMBER = os.environ["PR_NUMBER"]
 
 REVIEW_PROMPT = """You are an elite code reviewer. Review the following clusterfuzz sarif report.
-Respond starting with a table of found issues (organised in coloumn
-Description, File:Line, Recommendation), how it matters, suggestions to fix for the referenced file line only,
-not based on its input. Be specific and reference file names and line numbers.
+Respond starting with a table of found issues (organised in coloumn Description, File:Line, Recommendation),
+how it matters. Read the code at that file line and suggests how to fix that line,
+not suggestion to fix its parameter input.
 
 ```json
 {data_report}
