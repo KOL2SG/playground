@@ -51,10 +51,10 @@ Findings:"""
 def fetch_code_scanning_alerts(repo: str, pr_number: str) -> dict:
     """Fetch open code-scanning alerts for one PR's HEAD ref."""
     ref = f"refs/pull/{pr_number}/head"
-    repo_encoded = urllib.parse.quote(repo, safe="")
+    ref = f"refs/pull/{pr_number}/head"
     url = (
-        f"https://api.github.com/repos/{repo_encoded}/code-scanning/alerts"
-        f"?ref={urllib.parse.quote(ref)}&per_page=100"
+        f"https://api.github.com/repos/{repo}/code-scanning/alerts"
+        f"?ref={ref}&per_page=100"
     )
     req = urllib.request.Request(url, headers=API_HEADERS)
     with urllib.request.urlopen(req, timeout=30) as resp:
