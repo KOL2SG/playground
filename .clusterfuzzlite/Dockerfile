@@ -3,3 +3,4 @@ RUN apt-get update && apt-get install -y make autoconf automake libtool
 COPY . $SRC/playground
 WORKDIR playground
 COPY .clusterfuzzlite/build.sh $SRC/
+COPY scripts/ai_clusterfuzz_review.py $SRC/
