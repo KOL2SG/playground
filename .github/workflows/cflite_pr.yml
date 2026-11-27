@@ -33,6 +33,9 @@ jobs:
         git fetch origin +refs/pull/${{ github.event.pull_request.number }}/merge:refs/remotes/pull/${{ github.event.pull_request.number }}/merge
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Copy file into workspace
+      run: |
+        cp scripts/ai_clusterfuzz_review.py ${{ github.workspace }}/scripts/ai_clusterfuzz_review.py
     - name: Build Fuzzers (${{ matrix.sanitizer }})
       id: build
       uses: KOL2SG/clusterfuzzlite/actions/build_fuzzers@main
