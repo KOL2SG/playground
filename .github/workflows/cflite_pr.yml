@@ -72,6 +72,7 @@ jobs:
         # Category separates this analysis from other code-scanning uploads.
         category: clusterfuzzlite-pr
     - name: Run Ollama-backed review
+      if: always()
       env:
         OLLAMA_URL: http://127.0.0.1:11434/api/generate
         OLLAMA_MODEL: qwen3.8:latest
