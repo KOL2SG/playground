@@ -1,4 +1,8 @@
-
-
+*.log
+actions-runner/
+draugr-out/
+out/
+crash*
+llvm.sh
 #Ignore vscode AI rules
 .github/instructions/codacy.instructions.md

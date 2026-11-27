@@ -4,12 +4,22 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+permissions:
+  contents: read          # Needed to download/read the code changes
+  pull-requests: write    # Needed so the runner can post inline comments on the PR [source: 9]
+  issues: write           # Backup permission required by some comment actions [source: 9]
+
 jobs:
   review:
-    runs-on: [self-hosted, gpu-network]  # label your self-hosted runner accordingly
+    runs-on: [self-hosted, Linux, X64, qwen3-coder]  # label your self-hosted runner accordingly
     steps:
+      - name: Clear specific path
+        uses: KOL2SG/action-clean@master
+        with:
+          path: playground
+
       - name: Checkout PR
-        uses: actions/checkout@v4
+        uses: KOL2SG/checkout@main
         with:
           fetch-depth: 0
 
@@ -20,8 +30,9 @@ jobs:
 
       - name: Run Ollama-backed review
         env:
-          OLLAMA_URL: http://10.20.0.15:11434/api/generate
-          OLLAMA_MODEL: qwen2.5-coder:14b
-          GITHUB_TOKEN: ${{ secrets.REVIEW_BOT_TOKEN }}
+          OLLAMA_URL: http://127.0.0.1:11434/api/generate
+          OLLAMA_MODEL: qwen3.8:latest
+          # OLLAMA_MODEL: beam:cloud
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: python3 scripts/ai_review.py

@@ -1,0 +1,76 @@
+name: Clang C++23 Individual File Build & Coverage
+
+on:
+  push:
+    branches: [ "main", "test" ]
+  # pull_request:
+    # branches: [ "main" ]
+
+jobs:
+  build-and-coverage:
+    runs-on: [self-hosted, Linux, X64, qwen3-coder]
+
+    steps:
+    - name: Clear specific path
+      uses: KOL2SG/action-clean@main
+      with:
+        path: playground
+
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+#     - name: Install Clang 18 and LLVM Tools
+#       run: |
+#         wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+#         echo "deb http://apt.llvm.org/llvm-latest/ llvm-toolchain-noble-18 main" | sudo tee /etc/apt/sources.list.d/llvm.list
+#         sudo apt-get update
+#         sudo apt-get install -y clang-18 llvm-18
+#
+#         sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-18 100
+#         sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang-18 100
+#         sudo update-alternatives --install /usr/bin/llvm-profdata llvm-profdata /usr/bin/llvm-profdata-18 100
+#         sudo update-alternatives --install /usr/bin/llvm-cov llvm-cov /usr/bin/llvm-cov-18 100
+
+    - name: Compile and Measure Coverage Dynamically
+      run: |
+        mkdir -p build/binaries build/profiles build/reports
+
+        # Loop through every .cpp file in the src/ directory
+        for filepath in src/cpp/good/*.cpp; do
+          [ -e "$filepath" ] || continue # Handle empty directory edgecase
+
+          # Extract the file name without directories and extensions (e.g. "src/main.cpp" -> "main")
+          filename=$(basename -- "$filepath")
+          basename="${filename%.*}"
+
+          echo "=========================================================="
+          echo "🚀 Processing File: $filename"
+          echo "=========================================================="
+
+          # 1. Compile the file into its own standalone executable
+          clang++ -O0 -g -fprofile-instr-generate -fcoverage-mapping \
+            -fsanitize=fuzzer,address \
+            -fsanitize-coverage=edge,trace-cmp \
+            "$filepath" -o "build/binaries/${basename}_exec"
+
+          # 2. Run the specific binary to capture run-time coverage profiling
+          LLVM_PROFILE_FILE="build/profiles/${basename}-%p.profraw" "./build/binaries/${basename}_exec" || true
+
+          # 3. Merge the raw profiles generated for this specific execution
+          llvm-profdata-18 merge -sparse build/profiles/${basename}-*.profraw -o "build/profiles/${basename}.profdata"
+
+          # 4. Generate coverage reporting for this specific file
+          echo "📊 Coverage Summary for $filename:"
+          llvm-cov-18 report "build/binaries/${basename}_exec" -instr-profile="build/profiles/${basename}.profdata"
+
+          # 5. Output detailed HTML reporting
+          llvm-cov-18 show "build/binaries/${basename}_exec" -instr-profile="build/profiles/${basename}.profdata" \
+            -format=html -output-dir="build/reports/${basename}_coverage"
+        done
+      # continue-on-error: true
+
+    # - name: Upload Individual Coverage Reports
+    #   uses: actions/upload-artifact@v4
+    #   with:
+    #     name: individual-clang-coverage
+    #     path: build/reports/

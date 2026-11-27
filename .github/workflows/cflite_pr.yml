@@ -1,0 +1,89 @@
+name: ClusterFuzzLite PR fuzzing
+# ClusterFuzzLite PR fuzzing. Single unified libFuzzer harness under src/cpp/fuzz_targets/all_targets_fuzz.cpp (selector-byte dispatcher). Action builds and runs one binary: $OUT/all_targets.
+on:
+  pull_request:
+    paths:
+      - '**'
+permissions:
+  contents: read          # Needed to download/read the code changesread-all
+  pull-requests: write    # Needed so the runner can post inline comments on the PR [source: 9]
+  issues: write           # Backup permission required by some comment actions [source: 9]
+jobs:
+  PR:
+    # runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64, qwen3-coder]
+    concurrency:
+      group: ${{ github.workflow }}-${{ matrix.sanitizer }}-${{ github.ref }}
+      cancel-in-progress: true
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer:
+        - address
+        # Override this with the sanitizers you want.
+        # - undefined
+        # - memory
+    steps:
+    - name: Clear specific path
+      uses: KOL2SG/action-clean@master
+      with:
+        path: out/artifacts
+    - name: Fetch PR merge ref
+      # Give the ClusterFuzzLite script a local ref it can git-checkout
+      # even if the runner did not pre-fetch the PR merge commit.
+      run: |
+        git fetch --depth=1 origin +refs/pull/${{ github.event.pull_request.number }}/head:refs/remotes/origin/pr_head
+        git fetch origin +refs/pull/${{ github.event.pull_request.number }}/merge:refs/remotes/pull/${{ github.event.pull_request.number }}/merge
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    # - name: Checkout PR
+    #   uses: KOL2SG/checkout@main
+    #   with:
+    #     fetch-depth: 0
+    - name: Build Fuzzers (${{ matrix.sanitizer }})
+      id: build
+      uses: KOL2SG/clusterfuzzlite/actions/build_fuzzers@main
+      with:
+        language: c++ # Change this to the language you are fuzzing.
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        sanitizer: ${{ matrix.sanitizer }}
+        # Optional but recommended: used to only run fuzzers that are affected
+        # by the PR.
+        # See later section on "Git repo for storage".
+        # storage-repo: https://${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/OWNER/STORAGE-REPO-NAME.git
+        # storage-repo-branch: main   # Optional. Defaults to "main"
+        # storage-repo-branch-coverage: gh-pages  # Optional. Defaults to "gh-pages".
+    - name: Run Fuzzers (${{ matrix.sanitizer }})
+      id: run
+      uses: KOL2SG/clusterfuzzlite/actions/run_fuzzers@main
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        fuzz-seconds: 600
+        mode: 'code-change'
+        sanitizer: ${{ matrix.sanitizer }}
+        output-sarif: true
+        # Optional but recommended: used to download the corpus produced by
+        # batch fuzzing.
+        # See later section on "Git repo for storage".
+        # storage-repo: https://${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/OWNER/STORAGE-REPO-NAME.git
+        # storage-repo-branch: main   # Optional. Defaults to "main"
+    # - name: Run Ollama-backed review
+    #   if: always()
+    #   env:
+    #     OLLAMA_URL: http://127.0.0.1:11434/api/generate
+    #     OLLAMA_MODEL: qwen3.8:latest
+    #     # OLLAMA_MODEL: beam:cloud
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #     PR_NUMBER: ${{ github.event.pull_request.number }}
+    #   run: python3 scripts/ai_clusterfuzz_review.py
+    - name: Upload ClusterFuzzLite SARIF to code scanning
+      if: always()
+      uses: KOL2SG/codeql-action/upload-sarif@main
+      with:
+        # ClusterFuzzLite on the self-hosted runner writes its SARIF under
+        # the runner's _review output (outside the repo root), so point the
+        # upload at the real file. Adjust the 'actions-runner/_review/...'
+        # prefix to match your runner's review checkout layout if it differs.
+        sarif_file: 'cifuzz-sarif/results.sarif'
+        # Category separates this analysis from other code-scanning uploads.
+        category: clusterfuzzlite-pr

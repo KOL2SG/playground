@@ -1,0 +1,47 @@
+name: AI Security Review (Self-Hosted Ollama)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read          # Needed to download/read the code changes
+  pull-requests: write    # Needed so the runner can post inline comments on the PR [source: 9]
+  issues: write           # Backup permission required by some comment actions [source: 9]
+  security-events: read   # Needed to read GitHub code-scanning alerts for the PR
+
+jobs:
+  security_review:
+    runs-on: [self-hosted, Linux, X64, qwen3-coder]  # label your self-hosted runner accordingly
+    steps:
+      - name: Clear specific path
+        uses: KOL2SG/action-clean@master
+        with:
+          path: playground
+
+      - name: Checkout PR
+        uses: KOL2SG/checkout@main
+        with:
+          fetch-depth: 0
+
+      - run: draugr scan draugr.saga.yaml -o draugr-out # Runs on local self-hosted runner
+        continue-on-error: true  # <--- Forces the workflow to keep going
+
+      - name: Advanced Security code-scanning review
+        env:
+          OLLAMA_URL: http://127.0.0.1:11434/api/generate
+          OLLAMA_MODEL: qwen3.8:latest
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+        run: python3 scripts/ai_advsec_review.py
+
+      - name: Run Ollama-backed security review
+        env:
+          OLLAMA_URL: http://127.0.0.1:11434/api/generate
+          OLLAMA_MODEL: qwen3.8:latest
+          # OLLAMA_MODEL: beam:cloud
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: python3 scripts/ai_security_review.py
